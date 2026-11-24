@@ -145,6 +145,9 @@
 
   // AI Circuit Assistant & Share/Export Toast
   let aiPrompt = "";
+  let aiMode: AiMode = "explain";
+  let aiReply: AiTutorResponse | null = null;
+  let stress3dEl: HTMLCanvasElement;
   let statusToast = "";
   let showExportMenu = false;
 
