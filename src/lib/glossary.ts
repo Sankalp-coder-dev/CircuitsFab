@@ -18,9 +18,9 @@ export const GLOSSARY_INFO: Partial<Record<ComponentType, GlossaryEntry>> = {
     formulaHtml: 'V(t) = V<sub>p</sub> · sin(2π · f · t)',
   },
   GND: {
-    plain: 'The 0V baseline for your entire circuit. Every voltage measurement is compared against Ground.',
+    plain: 'The shared 0.00V Common Ground return path for your entire circuit. Every GND symbol you place on the board is automatically connected together at 0V.',
     analogy: 'Sea level (0 ft) when measuring mountain heights.',
-    formulaHtml: 'V<sub>GND</sub> = 0.00 V',
+    formulaHtml: 'V<sub>GND</sub> = 0.00 V (Common Bus)',
   },
   R: {
     plain: 'Slows down electric current so delicate parts like LEDs do not burn out.',

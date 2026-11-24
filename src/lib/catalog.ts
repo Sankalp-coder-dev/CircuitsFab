@@ -158,10 +158,10 @@ export const CATALOG: CatalogItem[] = [
     stepVal: 0,
     maxPowerW: 100,
     maxVoltageV: 100,
-    tooltipTitle: 'Ground (0V)',
-    tooltipPhysics: '0.00V Reference Node',
+    tooltipTitle: 'Common Ground (0V Bus)',
+    tooltipPhysics: '0.00V Common Ground — all GND pins on the board are automatically tied together',
     pins: [
-      { id: 'GND', label: '0V', dx: 0, dy: -1, description: '0V Reference Pin' },
+      { id: 'GND', label: '0V', dx: 0, dy: -1, description: 'Common 0V Ground Pin' },
     ],
   },
   {
