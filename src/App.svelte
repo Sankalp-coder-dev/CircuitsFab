@@ -6745,16 +6745,16 @@
   .ai-bar {
     position: absolute;
     bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 155px;
+    right: 374px;
     z-index: 16;
     display: flex;
+    align-items: center;
     gap: 6px;
     background-color: var(--bg-panel);
     border: 1.5px solid var(--ink);
     border-radius: 8px;
-    padding: 4px 6px;
-    width: min(440px, calc(100% - 380px));
+    padding: 5px 8px;
   }
 
   .ai-bar input {
