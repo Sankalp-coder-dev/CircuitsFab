@@ -151,7 +151,7 @@ export const CATALOG: CatalogItem[] = [
     type: 'GND',
     label: 'GND',
     shortUnit: '0V',
-    category: 'analog',
+    category: 'digital',
     defaultValue: 0,
     minVal: 0,
     maxVal: 0,
