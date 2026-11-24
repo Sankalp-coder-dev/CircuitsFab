@@ -6081,12 +6081,9 @@
   }
 
   .canvas-top-pills {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 15;
     display: flex;
     gap: 6px;
+    pointer-events: auto;
   }
 
   .canvas-top-pills.shifted-down,
