@@ -1,8 +1,12 @@
 import { mount } from 'svelte';
 import './app.css';
 import App from './App.svelte';
+import { inject } from '@vercel/analytics';
 
 const target = document.getElementById('app')!;
+
+// Initialize Vercel Analytics
+inject();
 
 try {
   mount(App, { target });
