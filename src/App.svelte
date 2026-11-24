@@ -51,7 +51,7 @@
     loadCircuitFromLocalStorage,
     saveCircuitToLocalStorage,
   } from "./lib/exportUtils.ts";
-  import { buildCircuitFromPrompt } from "./lib/aiAssistant.ts";
+  import { askAiTutor, type AiMode, type AiTutorResponse } from "./lib/aiAssistant.ts";
 
   const GRID = 28;
 
@@ -1577,6 +1577,18 @@
         on:mouseleave={clearHover}
       >
         GLOSSARY
+      </button>
+
+      <button
+        class="subpage-btn"
+        class:active={activeSubpage === 'about'}
+        on:click={() => (activeSubpage = 'about')}
+        on:mouseenter={(e) =>
+          setHover(e, 'ABOUT CIRCUITFAB', 'What this site is and how it helps you learn electronics')}
+        on:mousemove={moveHover}
+        on:mouseleave={clearHover}
+      >
+        ABOUT
       </button>
     </nav>
   </div>
@@ -4403,14 +4415,28 @@
             </g>
           </svg>
 
-          <!-- Bottom-Center AI Circuit Assistant Prompt Bar -->
+          <!-- Bottom-Center Educational AI Tutor (Explain / Brainstorm / Parts) -->
+          {#if aiReply}
+            <div class="ai-reply-card">
+              <div class="ai-reply-top">
+                <strong>{aiReply.title}</strong>
+                <button class="icon-action" on:click={() => (aiReply = null)}>✕</button>
+              </div>
+              <p class="ai-reply-body">{aiReply.body}</p>
+            </div>
+          {/if}
           <form class="ai-bar" on:submit|preventDefault={runAiPrompt}>
+            <div class="ai-modes">
+              <button type="button" class:active={aiMode === 'explain'} on:click={() => (aiMode = 'explain')}>EXPLAIN</button>
+              <button type="button" class:active={aiMode === 'brainstorm'} on:click={() => (aiMode = 'brainstorm')}>IDEAS</button>
+              <button type="button" class:active={aiMode === 'parts'} on:click={() => (aiMode = 'parts')}>PARTS</button>
+            </div>
             <input
               type="text"
               bind:value={aiPrompt}
-              placeholder="AI: e.g. build a 5V LED dimmer with a transistor..."
+              placeholder={aiMode === 'explain' ? 'Ask how your circuit works...' : aiMode === 'brainstorm' ? 'Brainstorm a project idea...' : 'Ask what a part does (e.g. FPGA, NPN)...'}
             />
-            <button type="submit">BUILD</button>
+            <button type="submit" class="ai-ask-btn">ASK</button>
           </form>
 
           <!-- Bottom-Left 2D Zoom Controls -->
@@ -5552,6 +5578,34 @@
           </div>
         </div>
       {/each}
+    </section>
+  </main>
+{/if}
+
+
+<!-- =========================================================================
+     SUBPAGE 6: ABOUT (Plain, Human-Readable)
+     ========================================================================= -->
+{#if activeSubpage === 'about'}
+  <main class="about-page">
+    <section class="about-card">
+      <h1>About CircuitFab</h1>
+      <p>
+        CircuitFab is a browser-based electronics lab built for students, hobbyists, and anyone curious about how hardware works.
+        You can drop parts onto a grid, wire them together, and watch real physics update voltages, currents, and waveforms right away.
+      </p>
+      <p>
+        Most circuit tools split analog electronics, microcontrollers, and FPGAs into separate apps. CircuitFab puts them on one board:
+        you can wire resistors, capacitors, LEDs, and transistors alongside an Arduino Uno, a 555 timer, or a programmable FPGA Look-Up Table,
+        then flip into 3D to inspect the board or test what breaks in the Stress Lab.
+      </p>
+      <p>
+        <strong>Primary use:</strong> learning electronics by experimenting—without needing to buy parts, install heavy desktop software, or worry about burning out real components.
+      </p>
+      <div class="about-actions">
+        <button class="action-pill fpga-pill" on:click={() => (activeSubpage = 'circuit')}>OPEN CIRCUIT BOARD</button>
+        <button class="action-pill ic-pill" on:click={() => (activeSubpage = 'glossary')}>READ GLOSSARY</button>
+      </div>
     </section>
   </main>
 {/if}
@@ -6730,6 +6784,114 @@
     border-radius: 8px;
     font-size: 15.5px;
     font-weight: 700;
+  }
+
+
+  .ai-modes {
+    display: flex;
+    gap: 3px;
+  }
+
+  .ai-modes button {
+    padding: 3px 7px;
+    font-size: 15px;
+    font-weight: 700;
+    border: 1px solid var(--border);
+    background-color: var(--bg-card);
+    color: var(--ink);
+  }
+
+  .ai-modes button.active {
+    background-color: var(--blue);
+    color: #ffffff;
+    border-color: var(--blue);
+  }
+
+  .ai-ask-btn {
+    padding: 4px 12px;
+    background-color: var(--ink);
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .ai-reply-card {
+    position: absolute;
+    bottom: 66px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 22;
+    width: min(520px, calc(100% - 380px));
+    background-color: var(--bg-panel);
+    border: 1.5px solid var(--blue);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ai-reply-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 16px;
+  }
+
+  .ai-reply-body {
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink-muted);
+  }
+
+  .stress-3d-box {
+    height: 230px;
+    min-height: 230px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #F0F2F5;
+  }
+
+  .about-page {
+    padding: 28px;
+    width: 100vw;
+    height: calc(100vh - 54px);
+    background-color: var(--bg-canvas);
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .about-card {
+    max-width: 720px;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .about-card h1 {
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .about-card p {
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+
+  .about-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
   }
 
   /* HOVER TOOLTIP HUD */

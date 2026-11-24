@@ -29,7 +29,7 @@ export type ComponentType =
 
 export type ComponentCategory = 'analog' | 'digital' | 'chips';
 
-export type AppSubpage = 'circuit' | 'fpga' | 'ide' | 'stress' | 'tutorial' | 'glossary';
+export type AppSubpage = 'circuit' | 'fpga' | 'ide' | 'stress' | 'tutorial' | 'glossary' | 'about';
 
 export interface PinDef {
   id: string;

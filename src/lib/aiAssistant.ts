@@ -1,108 +1,152 @@
-import { PRESETS } from './presets.ts';
-import type { CircuitComponent, Wire } from './types.ts';
+import { CATALOG } from './catalog.ts';
+import { GLOSSARY_INFO } from './glossary.ts';
+import type { CircuitComponent } from './types.ts';
 
-export interface AiCircuitResult {
-  summary: string;
-  components: CircuitComponent[];
-  wires: Wire[];
+export type AiMode = 'explain' | 'brainstorm' | 'parts';
+
+export interface AiTutorResponse {
+  mode: AiMode;
+  title: string;
+  body: string;
 }
 
 /**
- * AI Circuit Assistant: parses natural-language circuit requests
- * (e.g. "build a 5V LED dimmer with a transistor", "fpga counter", "555 blinker", "rc filter")
- * and synthesizes ready-to-simulate components + wires.
+ * Educational AI Tutor (Does NOT overwrite your circuit):
+ * 1. explain: Explains how your current circuit or an electronics concept works.
+ * 2. brainstorm: Suggests cool electronics/FPGA/Arduino project ideas.
+ * 3. parts: Explains what any specific component does and how its pins work.
  */
-export function buildCircuitFromPrompt(prompt: string): AiCircuitResult {
-  const q = prompt.toLowerCase();
+export function askAiTutor(
+  prompt: string,
+  mode: AiMode,
+  components: CircuitComponent[]
+): AiTutorResponse {
+  const q = prompt.trim().toLowerCase();
 
-  // 1. 5V LED Dimmer with Transistor (e.g. "build a 5V LED dimmer with a transistor")
-  if (q.includes('dimmer') || (q.includes('led') && q.includes('transistor'))) {
-    const baseV = q.includes('9v') ? 9 : q.includes('12v') ? 12 : 5;
+  if (mode === 'parts') {
+    const match = CATALOG.find(
+      (c) =>
+        q === c.label.toLowerCase() ||
+        q.includes(c.label.toLowerCase()) ||
+        q.includes(c.tooltipTitle.toLowerCase()) ||
+        (c.type === 'R' && q.includes('resistor')) ||
+        (c.type === 'C' && q.includes('capacitor')) ||
+        (c.type === 'L' && q.includes('inductor')) ||
+        (c.type === 'NPN' && (q.includes('transistor') || q.includes('npn'))) ||
+        (c.type === 'NMOS' && (q.includes('mosfet') || q.includes('fet'))) ||
+        (c.type === 'ARDUINO' && (q.includes('arduino') || q.includes('uno'))) ||
+        (c.type === 'IC555' && q.includes('555'))
+    );
+
+    if (match) {
+      const g = GLOSSARY_INFO[match.type];
+      const pinList = match.pins.map((p) => `${p.label} (${p.description})`).join(' · ');
+      return {
+        mode,
+        title: `${match.label} — ${match.tooltipTitle}`,
+        body: `${g?.plain ?? match.tooltipPhysics}${g?.analogy ? ` Think of it like: ${g.analogy}` : ''} Pins: ${pinList}`,
+      };
+    }
+
     return {
-      summary: `Built ${baseV}V NPN Transistor LED Dimmer (slide RB to dim LED1)`,
-      components: [
-        { id: 'V1', type: 'VDC', label: 'VCC', x: 8, y: 11, rotation: 0, value: baseV, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
-        { id: 'RB', type: 'R', label: 'RB_DIM', x: 14, y: 11, rotation: 0, value: 10000, color: '#388C46', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
-        { id: 'Q1', type: 'NPN', label: 'Q1', x: 20, y: 11, rotation: 0, value: 120, color: '#FA7E19', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
-        { id: 'RL', type: 'R', label: 'RL', x: 21, y: 5, rotation: 90, value: 220, color: '#6042A6', pinVoltages: {}, branchCurrent: 0, power: 0 },
-        { id: 'LED1', type: 'LED', label: 'LED1', x: 21, y: 8, rotation: 90, value: 1.9, color: '#C74440', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
-        { id: 'GND1', type: 'GND', label: 'GND', x: 15, y: 16, rotation: 0, value: 0, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
-      ],
-      wires: [
-        { id: 'aw1', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'RB', toPinId: 'A', voltage: 0, current: 0 },
-        { id: 'aw2', fromCompId: 'RB', fromPinId: 'B', toCompId: 'Q1', toPinId: 'B', voltage: 0, current: 0 },
-        { id: 'aw3', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'RL', toPinId: 'A', voltage: 0, current: 0 },
-        { id: 'aw4', fromCompId: 'RL', fromPinId: 'B', toCompId: 'LED1', toPinId: 'A', voltage: 0, current: 0 },
-        { id: 'aw5', fromCompId: 'LED1', fromPinId: 'K', toCompId: 'Q1', toPinId: 'C', voltage: 0, current: 0 },
-        { id: 'aw6', fromCompId: 'Q1', fromPinId: 'E', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
-        { id: 'aw7', fromCompId: 'V1', fromPinId: 'NEG', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
-      ],
+      mode,
+      title: 'Part Lookup',
+      body: 'Type any part name like "resistor", "LED", "NPN", "NMOS", "FPGA", "555", or "Arduino" to see what it does and how to wire its pins.',
     };
   }
 
-  // 2. FPGA / Counter / Adder
-  if (q.includes('fpga') || q.includes('counter')) {
-    const p = PRESETS.find((pr) => pr.id === 'fpga-counter') ?? PRESETS[1];
+  if (mode === 'brainstorm') {
+    if (q.includes('fpga') || q.includes('logic') || q.includes('digital')) {
+      return {
+        mode,
+        title: 'FPGA & Digital Project Ideas',
+        body: '1) 2-Bit Binary Counter: Wire an FPGA LUT4 to two D Flip-Flops and a 7-Segment Display. 2) Parity Checker: Use the FPGA PARITY-4 profile with 4 BIT switches to detect odd/even bits. 3) Reaction Timer: Clock a counter with CLK and freeze it with a switch.',
+      };
+    }
+    if (q.includes('arduino') || q.includes('code') || q.includes('sensor')) {
+      return {
+        mode,
+        title: 'Arduino & Mixed-Signal Ideas',
+        body: '1) PWM LED Dimmer: Drive an NPN transistor from D13 and adjust DUTY% in Code IDE. 2) RC Analog Feedback: Filter D11 through R+C into A0 and watch ADC0 respond. 3) Over-Voltage Alarm: Use D9 comparator output to trigger a warning LED.',
+      };
+    }
     return {
-      summary: `Loaded ${p.label}: ${p.tooltip}`,
-      components: structuredClone(p.components),
-      wires: structuredClone(p.wires),
+      mode,
+      title: 'Cool Circuit Ideas to Build',
+      body: '1) Transistor Touch Switch: Use a high-value resistor + NPN (Q1) to light an LED with tiny current. 2) 555 LED Strobe: Wire NE555 with R1, R2, C1 and slide C1 to change flash speed. 3) Stress-Test Fuse Lab: Put a 220Ω resistor + LED in Stress Lab and crank voltage surge to 2.5x.',
     };
   }
 
-  // 3. Arduino
-  if (q.includes('arduino') || q.includes('uno')) {
-    const p = PRESETS[0];
+  // Default: 'explain' mode (Educational, never builds/overwrites)
+  if (q.includes('fpga')) {
     return {
-      summary: `Loaded Arduino Uno R3 + NPN Transistor Driver`,
-      components: structuredClone(p.components),
-      wires: structuredClone(p.wires),
+      mode,
+      title: 'How an FPGA Works',
+      body: 'An FPGA is a reconfigurable chip. Instead of running software line-by-line, its 4-input Look-Up Table (LUT4) reads I0–I3 (0V or 5V) and instantly outputs Y0 and Y1 based on the truth table you program in the FPGA & CHIP tab.',
+    };
+  }
+  if (q.includes('transistor') || q.includes('npn') || q.includes('mosfet')) {
+    return {
+      mode,
+      title: 'How Transistors Work',
+      body: 'A transistor is an electronic valve. In an NPN transistor, a tiny current into the Base (B) lets a much larger current flow from Collector (C) to Emitter (E). In an NMOS FET, voltage on the Gate (G) opens the channel.',
+    };
+  }
+  if (q.includes('ohm') || q.includes('resistor') || q.includes('led')) {
+    return {
+      mode,
+      title: 'Ohm’s Law & LEDs',
+      body: 'Voltage (V) pushes current (I) through resistance (R): V = I × R. An LED only needs ~1.8V–2.2V, so a series resistor (like 220Ω on a 5V supply) absorbs the extra voltage and keeps current safe (~14mA).',
     };
   }
 
-  // 4. 555 Timer / Blinker
-  if (q.includes('555') || q.includes('blink') || q.includes('osc')) {
-    const p = PRESETS.find((pr) => pr.id === '555-astable') ?? PRESETS[0];
+  // Explain the user's current circuit on the board
+  if (components.length === 0) {
     return {
-      summary: `Loaded NE555 Astable Oscillator Blinker`,
-      components: structuredClone(p.components),
-      wires: structuredClone(p.wires),
+      mode,
+      title: 'Empty Board',
+      body: 'Your board is empty right now. Drop a Voltage Source (VDC), Resistor (R), LED, and Ground (GND) from the left palette, or ask me to explain any part!',
     };
   }
 
-  // 5. RC Low-Pass Filter
-  if (q.includes('filter') || q.includes('rc')) {
+  const types = [...new Set(components.map((c) => c.type))];
+  const hasArduino = types.includes('ARDUINO');
+  const hasFpga = types.includes('FPGA');
+  const hasNpn = types.includes('NPN') || types.includes('PNP') || types.includes('NMOS');
+  const has555 = types.includes('IC555');
+
+  if (hasFpga) {
     return {
-      summary: `Built RC Low-Pass Analog Filter (AC input -> R1 -> C1)`,
-      components: [
-        { id: 'VIN', type: 'VAC', label: 'VIN', x: 8, y: 11, rotation: 0, value: 5, param2: 8, color: '#2D70B3', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
-        { id: 'R1', type: 'R', label: 'R1', x: 14, y: 9, rotation: 0, value: 1000, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
-        { id: 'C1', type: 'C', label: 'C1', x: 19, y: 11, rotation: 90, value: 0.000047, color: '#FA7E19', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
-        { id: 'GND1', type: 'GND', label: 'GND', x: 14, y: 16, rotation: 0, value: 0, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
-      ],
-      wires: [
-        { id: 'fw1', fromCompId: 'VIN', fromPinId: 'POS', toCompId: 'R1', toPinId: 'A', voltage: 0, current: 0 },
-        { id: 'fw2', fromCompId: 'R1', fromPinId: 'B', toCompId: 'C1', toPinId: 'A', voltage: 0, current: 0 },
-        { id: 'fw3', fromCompId: 'C1', fromPinId: 'B', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
-        { id: 'fw4', fromCompId: 'VIN', fromPinId: 'NEG', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
-      ],
+      mode,
+      title: 'Your Current FPGA Circuit',
+      body: `You have ${components.length} parts on the board including an FPGA LUT4. Inputs I0–I3 feed the Look-Up Table, which drives Y0/Y1 in real time. Open the FPGA & CHIP tab to edit its truth table.`,
+    };
+  }
+  if (hasArduino) {
+    return {
+      mode,
+      title: 'Your Current Arduino Circuit',
+      body: `You have ${components.length} parts wired to an Arduino Uno. Pin D13/D11 output 5V PWM pulses, and A0 reads analog voltage (0–1023). You can edit the C firmware in CODE IDE.`,
+    };
+  }
+  if (has555) {
+    return {
+      mode,
+      title: 'Your Current 555 Timer Circuit',
+      body: `The NE555 charges and discharges capacitor C1 between ⅓Vcc and ⅔Vcc, toggling pin OUT between HIGH and LOW to blink the LED.`,
+    };
+  }
+  if (hasNpn) {
+    return {
+      mode,
+      title: 'Your Current Transistor Circuit',
+      body: `You have ${components.length} parts including a transistor switch/amplifier. A small signal at the Base/Gate controls the main load current.`,
     };
   }
 
-  // Default: Simple 5V LED + Resistor Circuit
   return {
-    summary: `Built 5V LED Circuit for "${prompt}"`,
-    components: [
-      { id: 'V1', type: 'VDC', label: 'V1', x: 8, y: 11, rotation: 0, value: 5, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
-      { id: 'R1', type: 'R', label: 'R1', x: 14, y: 8, rotation: 0, value: 220, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
-      { id: 'LED1', type: 'LED', label: 'LED1', x: 20, y: 8, rotation: 0, value: 1.8, color: '#C74440', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
-      { id: 'GND1', type: 'GND', label: 'GND', x: 14, y: 15, rotation: 0, value: 0, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
-    ],
-    wires: [
-      { id: 'dw1', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'R1', toPinId: 'A', voltage: 0, current: 0 },
-      { id: 'dw2', fromCompId: 'R1', fromPinId: 'B', toCompId: 'LED1', toPinId: 'A', voltage: 0, current: 0 },
-      { id: 'dw3', fromCompId: 'LED1', fromPinId: 'K', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
-      { id: 'dw4', fromCompId: 'V1', fromPinId: 'NEG', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
-    ],
+    mode,
+    title: `Your Circuit (${components.length} parts)`,
+    body: `Your board currently has ${types.join(', ')}. Hover over any part or pin to see its live voltage and current, or switch to PARTS mode to ask about a specific component.`,
   };
 }
