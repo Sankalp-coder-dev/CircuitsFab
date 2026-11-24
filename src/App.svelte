@@ -6034,17 +6034,7 @@
 
   .canvas-top-pills.shifted-down,
   .open-3d-tab.shifted-down,
-  .selected-toolbar.shifted-down {
-    top: 106px;
-  }
-
-  /* Beginner Contextual Action Bar for Selected Component */
   .selected-toolbar {
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 18;
     background-color: var(--bg-panel);
     border: 1.5px solid var(--blue);
     border-radius: 8px;
@@ -6052,6 +6042,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    pointer-events: auto;
   }
 
   .sel-title {
