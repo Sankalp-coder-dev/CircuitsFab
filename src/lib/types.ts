@@ -8,6 +8,10 @@ export type ComponentType =
   | 'SW'
   | 'LED'
   | 'DIODE'
+  | 'ZENER'
+  | 'POT'
+  | 'FUSE'
+  | 'BUZZER'
   | 'NPN'
   | 'PNP'
   | 'NMOS'
@@ -21,6 +25,9 @@ export type ComponentType =
   | 'XOR'
   | 'NOT'
   | 'DFF'
+  | 'SR_LATCH'
+  | 'COUNTER4'
+  | 'SHIFT4'
   | 'SEG7'
   | 'FPGA'
   | 'IC555'
@@ -64,6 +71,7 @@ export interface StressConfig {
   emiNoiseV: number;       // 0.0V to 2.5V random electromagnetic interference spike
   clockOverdrive: number;  // 0.5x to 4.0x frequency overdrive
   burnoutEnabled: boolean; // whether exceeding max rating blows the component
+  repairGraceUntil?: number; // simTime until which recently repaired parts show overload warnings instead of re-blowing
 }
 
 export interface CompiledArduinoProgram {

@@ -439,6 +439,31 @@ export function stepCircuitPhysics(
           stampDiode(G, rhs, el.pins.A, el.pins.K, V, vf);
           break;
         }
+        case 'ZENER': {
+          const vz = Math.max(2.0, el.value || 5.1);
+          // Forward diode (A -> K at 0.7V) + Reverse Zener breakdown (K -> A at Vz)
+          stampDiode(G, rhs, el.pins.A, el.pins.K, V, 0.7);
+          stampDiode(G, rhs, el.pins.K, el.pins.A, V, vz);
+          break;
+        }
+        case 'POT': {
+          const rTotal = Math.max(10, el.value || 10000);
+          const alpha = Math.max(0.01, Math.min(0.99, (el.param2 || 50) / 100));
+          const rAW = Math.max(1, rTotal * (1 - alpha));
+          const rWB = Math.max(1, rTotal * alpha);
+          stampG(G, el.pins.A, el.pins.W, 1 / rAW);
+          stampG(G, el.pins.W, el.pins.B, 1 / rWB);
+          break;
+        }
+        case 'FUSE': {
+          stampG(G, el.pins.A, el.pins.B, 1 / 0.1);
+          break;
+        }
+        case 'BUZZER': {
+          // 160-Ohm piezo transducer equivalent resistance
+          stampG(G, el.pins.A, el.pins.K, 1 / 160);
+          break;
+        }
         case 'NPN': {
           const nB = el.pins.B;
           const nC = el.pins.C;
@@ -585,6 +610,37 @@ export function stepCircuitPhysics(
           stampG(G, el.pins.CLK, 0, 1e-7);
           stampVoltageSource(G, rhs, el.pins.Q, 0, qState ? vdd : 0, 1.0);
           stampVoltageSource(G, rhs, el.pins.NQ, 0, qState ? 0 : vdd, 1.0);
+          break;
+        }
+        case 'SR_LATCH': {
+          const vdd = (el.value || 5) * surge;
+          const sHigh = (V[el.pins.S] ?? 0) >= 2.2;
+          const rHigh = (V[el.pins.R] ?? 0) >= 2.2;
+          let qState = el.state.q ?? 0;
+          if (rHigh) qState = 0;
+          else if (sHigh) qState = 1;
+          el.state.q = qState;
+          stampG(G, el.pins.S, 0, 1e-7);
+          stampG(G, el.pins.R, 0, 1e-7);
+          stampVoltageSource(G, rhs, el.pins.Q, 0, qState ? vdd : 0, 1.0);
+          stampVoltageSource(G, rhs, el.pins.NQ, 0, qState ? 0 : vdd, 1.0);
+          break;
+        }
+        case 'COUNTER4':
+        case 'SHIFT4': {
+          const vdd = (el.value || 5) * surge;
+          const val = el.state.cnt ?? 0;
+          if (el.type === 'COUNTER4') {
+            stampG(G, el.pins.CLK, 0, 1e-7);
+            stampG(G, el.pins.RST, 0, 1e-7);
+          } else {
+            stampG(G, el.pins.DIN, 0, 1e-7);
+            stampG(G, el.pins.CLK, 0, 1e-7);
+          }
+          stampVoltageSource(G, rhs, el.pins.Q0, 0, (val & 1) ? vdd : 0, 1.0);
+          stampVoltageSource(G, rhs, el.pins.Q1, 0, (val & 2) ? vdd : 0, 1.0);
+          stampVoltageSource(G, rhs, el.pins.Q2, 0, (val & 4) ? vdd : 0, 1.0);
+          stampVoltageSource(G, rhs, el.pins.Q3, 0, (val & 8) ? vdd : 0, 1.0);
           break;
         }
         case 'SEG7': {
@@ -743,6 +799,24 @@ export function stepCircuitPhysics(
         el.state.q = (V[el.pins.D] ?? 0) >= 2.2 ? 1 : 0;
       }
       el.state.clkPrev = clkNow;
+    } else if (el.type === 'COUNTER4') {
+      const rstNow = (V[el.pins.RST] ?? 0) >= 2.2 ? 1 : 0;
+      const clkNow = (V[el.pins.CLK] ?? 0) >= 2.2 ? 1 : 0;
+      const clkPrev = el.state.clkPrev ?? 0;
+      if (rstNow === 1) {
+        el.state.cnt = 0;
+      } else if (clkNow === 1 && clkPrev === 0) {
+        el.state.cnt = ((el.state.cnt ?? 0) + 1) & 0x0f;
+      }
+      el.state.clkPrev = clkNow;
+    } else if (el.type === 'SHIFT4') {
+      const clkNow = (V[el.pins.CLK] ?? 0) >= 2.2 ? 1 : 0;
+      const clkPrev = el.state.clkPrev ?? 0;
+      if (clkNow === 1 && clkPrev === 0) {
+        const dIn = (V[el.pins.DIN] ?? 0) >= 2.2 ? 1 : 0;
+        el.state.cnt = (((el.state.cnt ?? 0) << 1) | dIn) & 0x0f;
+      }
+      el.state.clkPrev = clkNow;
     } else if (el.type === 'SEG7') {
       const b0 = (V[el.pins.B0] ?? 0) >= 2.2 ? 1 : 0;
       const b1 = (V[el.pins.B1] ?? 0) >= 2.2 ? 1 : 0;
@@ -796,6 +870,35 @@ export function stepCircuitPhysics(
         const vf = comp.type === 'LED' ? Math.max(1.5, comp.value) : 0.7;
         const { id } = evalDiodeCompanion(vDrop, vf);
         current = Math.max(0, id);
+        break;
+      }
+      case 'ZENER': {
+        vDrop = (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.K ?? 0);
+        const vz = Math.max(2.0, comp.value || 5.1);
+        const { id: iFwd } = evalDiodeCompanion(vDrop, 0.7);
+        const { id: iRev } = evalDiodeCompanion(-vDrop, vz);
+        current = Math.max(0, iFwd) - Math.max(0, iRev);
+        break;
+      }
+      case 'POT': {
+        vDrop = (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.B ?? 0);
+        const rTotal = Math.max(10, comp.value || 10000);
+        const alpha = Math.max(0.01, Math.min(0.99, (comp.param2 || 50) / 100));
+        const iAW = ((comp.pinVoltages.A ?? 0) - (comp.pinVoltages.W ?? 0)) / Math.max(1, rTotal * (1 - alpha));
+        const iWB = ((comp.pinVoltages.W ?? 0) - (comp.pinVoltages.B ?? 0)) / Math.max(1, rTotal * alpha);
+        current = Math.max(Math.abs(iAW), Math.abs(iWB));
+        break;
+      }
+      case 'FUSE': {
+        vDrop = (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.B ?? 0);
+        current = vDrop / 0.1;
+        break;
+      }
+      case 'BUZZER': {
+        vDrop = (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.K ?? 0);
+        current = vDrop / 160;
+        if (!comp.state) comp.state = {};
+        comp.state.buzzing = vDrop >= 2.0 ? 1 : 0;
         break;
       }
       case 'NPN': {
@@ -887,22 +990,28 @@ export function stepCircuitPhysics(
         : targetTemp;
 
     const pRatio = cat.maxPowerW > 0 ? comp.power / cat.maxPowerW : 0;
-    const iRatio = cat.maxCurrentA && cat.maxCurrentA > 0 ? Math.abs(current) / cat.maxCurrentA : 0;
+    const maxCurr = comp.type === 'FUSE' ? Math.max(0.005, comp.value) : cat.maxCurrentA;
+    const iRatio = maxCurr && maxCurr > 0 ? Math.abs(current) / maxCurr : 0;
     const vRatio = cat.maxVoltageV > 0 ? Math.abs(vDrop) / cat.maxVoltageV : 0;
     const tRatio = comp.tempC > 125 ? (comp.tempC - 25) / 110 : 0;
     comp.stressRatio = isSandbox ? 0 : Math.max(pRatio, iRatio, vRatio, tRatio);
 
-    // Check failure threshold (>1.15x max rating blows component in Realistic mode)
+    const inRepairGrace =
+      stress.repairGraceUntil !== undefined && simTime < stress.repairGraceUntil;
+
+    // Check failure threshold (>1.15x max rating blows component in Realistic mode, or >1.0x for FUSE)
+    const blowThreshold = comp.type === 'FUSE' ? 1.0 : 1.15;
     if (
       allowBurnout &&
-      comp.stressRatio > 1.15 &&
+      !inRepairGrace &&
+      comp.stressRatio > blowThreshold &&
       comp.type !== 'GND' &&
       comp.type !== 'VDC' &&
       comp.type !== 'VAC'
     ) {
       comp.blown = true;
-      if (iRatio >= pRatio && iRatio >= vRatio && cat.maxCurrentA) {
-        comp.failureReason = `OVERCURRENT (${(Math.abs(current) * 1000).toFixed(1)}mA > ${(cat.maxCurrentA * 1000).toFixed(0)}mA MAX)`;
+      if (iRatio >= pRatio && iRatio >= vRatio && maxCurr) {
+        comp.failureReason = `OVERCURRENT (${(Math.abs(current) * 1000).toFixed(1)}mA > ${(maxCurr * 1000).toFixed(0)}mA MAX)`;
       } else if (pRatio >= vRatio && pRatio >= tRatio) {
         comp.failureReason = `OVER-POWER (${(comp.power * 1000).toFixed(0)}mW > ${(cat.maxPowerW * 1000).toFixed(0)}mW MAX)`;
       } else if (vRatio >= tRatio) {
@@ -910,10 +1019,10 @@ export function stepCircuitPhysics(
       } else {
         comp.failureReason = `THERMAL MELTDOWN (${comp.tempC.toFixed(0)}°C > 135°C)`;
       }
-    } else if (!allowBurnout && comp.stressRatio > 1.0) {
-      // In Limited Burnout mode, populate failureReason as a non-destructive overload warning
-      if (iRatio >= pRatio && cat.maxCurrentA) {
-        comp.failureReason = `OVERLOAD ${(Math.abs(current) * 1000).toFixed(1)}mA (Max ${(cat.maxCurrentA * 1000).toFixed(0)}mA)`;
+    } else if ((!allowBurnout || inRepairGrace) && comp.stressRatio > 1.0) {
+      // In Limited Burnout mode (or during post-repair grace), populate failureReason as a non-destructive overload warning
+      if (iRatio >= pRatio && maxCurr) {
+        comp.failureReason = `OVERLOAD ${(Math.abs(current) * 1000).toFixed(1)}mA (Max ${(maxCurr * 1000).toFixed(0)}mA)`;
       } else {
         comp.failureReason = `OVERLOAD ${Math.round(comp.stressRatio * 100)}%`;
       }

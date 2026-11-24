@@ -225,6 +225,28 @@
   }
 
   function runAiPrompt() {
+    if (!aiPrompt.trim()) return;
+    pushHistory();
+    const res = buildCircuitFromPrompt(aiPrompt);
+    components = res.components;
+    wires = res.wires;
+    probeHistory = [];
+    selectedCompId = components[0]?.id ?? null;
+    for (let i = 0; i < 15; i++) {
+      stepCircuitPhysics(
+        components,
+        wires,
+        customChips,
+        simTime,
+        0.002,
+        stressConfig,
+        compiledArduino,
+      );
+    }
+    components = [...components];
+    wires = [...wires];
+    showToast(res.summary);
+    aiPrompt = "";
     aiReply = askAiTutor(aiMode, aiPrompt, components, wires);
     if (aiMode !== "explain") aiPrompt = "";
   }
@@ -302,6 +324,7 @@
     showTutorialBar = false;
     tutorialCompleted = false;
     activePresetId = preset.id;
+    stressConfig.burnoutEnabled = false;
     stressConfig.burnoutEnabled = (stressConfig.physicsMode ?? "realistic") === "realistic";
     components = preset.components.map((c) => ({
       ...c,
@@ -339,6 +362,7 @@
     activePresetId = tut.id;
     tutorialStepIdx = 0;
     tutorialCompleted = false;
+    stressConfig.burnoutEnabled = false;
     stressConfig.burnoutEnabled = (stressConfig.physicsMode ?? "realistic") === "realistic";
     stressConfig.voltageSurge = 1.0;
     components = tut.initialComponents.map((c) => ({
@@ -426,31 +450,45 @@
     const prefix =
       type === "R"
         ? "R"
-        : type === "C"
-          ? "C"
-          : type === "L"
-            ? "L"
-            : type === "NPN" || type === "PNP"
-              ? "Q"
-              : type === "NMOS"
-                ? "M"
-                : type === "LED"
-                  ? "LED"
-                  : type === "DIODE"
-                    ? "D"
-                    : type === "VDC" || type === "VAC"
-                      ? "V"
-                      : type === "GND"
-                        ? "GND"
-                        : type === "LOGIC_IN"
-                          ? "B"
-                          : type === "CLK"
-                            ? "CLK"
-                            : type === "FPGA"
-                              ? "FPGA"
-                              : type === "SEG7"
-                                ? "HEX"
-                                : "U";
+        : type === "POT"
+          ? "RV"
+          : type === "FUSE"
+            ? "F"
+            : type === "BUZZER"
+              ? "BZ"
+              : type === "ZENER"
+                ? "DZ"
+                : type === "C"
+                  ? "C"
+                  : type === "L"
+                    ? "L"
+                    : type === "NPN" || type === "PNP"
+                      ? "Q"
+                      : type === "NMOS"
+                        ? "M"
+                        : type === "LED"
+                          ? "LED"
+                          : type === "DIODE"
+                            ? "D"
+                            : type === "VDC" || type === "VAC"
+                              ? "V"
+                              : type === "GND"
+                                ? "GND"
+                                : type === "LOGIC_IN"
+                                  ? "B"
+                                  : type === "CLK"
+                                    ? "CLK"
+                                    : type === "COUNTER4"
+                                      ? "CNT"
+                                      : type === "SHIFT4"
+                                        ? "SR"
+                                        : type === "SR_LATCH"
+                                          ? "LATCH"
+                                          : type === "FPGA"
+                                            ? "FPGA"
+                                            : type === "SEG7"
+                                              ? "HEX"
+                                              : "U";
 
     let label = `${prefix}${count}`;
     let color = TRACE_COLORS[components.length % TRACE_COLORS.length];
@@ -606,19 +644,165 @@
     showTutorialBar = false;
   }
 
+  function repairComponent(id: string) {
+    pushHistory();
+    stressConfig.repairGraceUntil = simTime + 0.08;
+    components = components.map((c) => {
+      if (c.id !== id) return c;
+      const safeVal = c.type === "R" && c.value < 220 ? 220 : c.value;
+      return {
+        ...c,
+        value: safeVal,
+        blown: false,
+        failureReason: undefined,
+        tempC: 25,
+        stressRatio: 0,
+      };
+    });
+    showToast("Component repaired");
+  }
+
   function repairAllComponents() {
+    pushHistory();
     stressConfig.voltageSurge = 1.0;
     stressConfig.ambientTempC = 25;
     stressConfig.emiNoiseV = 0;
     stressConfig.clockOverdrive = 1.0;
-    stressConfig.burnoutEnabled = (stressConfig.physicsMode ?? "realistic") === "realistic";
-    components = components.map((c) => ({
-      ...c,
-      blown: false,
-      failureReason: undefined,
-      tempC: 25,
-      stressRatio: 0,
-    }));
+    stressConfig.burnoutEnabled =
+      (stressConfig.physicsMode ?? "realistic") === "realistic";
+    stressConfig.repairGraceUntil = simTime + 0.08;
+
+    const hadOvercurrent = components.some(
+      (c) =>
+        c.blown &&
+        (c.failureReason?.includes("OVERCURRENT") ||
+          c.failureReason?.includes("OVER-POWER")),
+    );
+    let upgradedResistors = 0;
+
+    components = components.map((c) => {
+      let nextVal = c.value;
+      if (c.type === "R" && (c.blown || hadOvercurrent) && c.value < 150) {
+        nextVal = 220;
+        upgradedResistors++;
+      }
+      return {
+        ...c,
+        value: nextVal,
+        blown: false,
+        failureReason: undefined,
+        tempC: 25,
+        stressRatio: 0,
+      };
+    });
+
+    showToast(
+      upgradedResistors > 0
+        ? `Repaired all parts & upgraded ${upgradedResistors} overloaded resistor(s) to safe 220Ω`
+        : "Repaired all blown components & reset stress chamber",
+    );
+  }
+
+  function cleanUnconnectedParts() {
+    const connectedIds = new Set<string>();
+    for (const w of wires) {
+      connectedIds.add(w.fromCompId);
+      connectedIds.add(w.toCompId);
+    }
+    const floating = components.filter((c) => !connectedIds.has(c.id));
+    if (floating.length === 0) {
+      showToast("All parts on the board are wired");
+      return;
+    }
+    pushHistory();
+    components = components.filter((c) => connectedIds.has(c.id));
+    if (selectedCompId && !connectedIds.has(selectedCompId)) {
+      selectedCompId = components[0]?.id ?? null;
+    }
+    showToast(`Removed ${floating.length} unwired part(s)`);
+  }
+
+  function syncWorkspaceToIdeCode() {
+    const connectedNames = (compId: string, pinId: string): string[] => {
+      const names: string[] = [];
+      for (const w of wires) {
+        if (w.fromCompId === compId && w.fromPinId === pinId) {
+          const other = components.find((c) => c.id === w.toCompId);
+          if (other) names.push(`${other.label} (${other.type})`);
+        } else if (w.toCompId === compId && w.toPinId === pinId) {
+          const other = components.find((c) => c.id === w.fromCompId);
+          if (other) names.push(`${other.label} (${other.type})`);
+        }
+      }
+      return names;
+    };
+
+    if (ideTarget === "avr") {
+      const uno = components.find((c) => c.type === "ARDUINO");
+      const d13Nets = uno ? connectedNames(uno.id, "D13") : [];
+      const d11Nets = uno ? connectedNames(uno.id, "D11") : [];
+      const d9Nets = uno ? connectedNames(uno.id, "D9") : [];
+      const a0Nets = uno ? connectedNames(uno.id, "A0") : [];
+      const freq = uno?.value ?? 2.5;
+      const duty = uno?.param2 ?? 50;
+      const halfPeriodMs = Math.max(10, Math.round(500 / Math.max(0.5, freq)));
+
+      avrSourceCode = `// Auto-Generated AVR C Firmware from Live Workspace (${components.length} parts, ${wires.length} wires)
+// Board Mapping:
+//   D13 (PB5) -> ${d13Nets.length > 0 ? d13Nets.join(", ") : "Unconnected"}
+//   D11 (PB3) -> ${d11Nets.length > 0 ? d11Nets.join(", ") : "Unconnected"}
+//   D9  (PB1) -> ${d9Nets.length > 0 ? d9Nets.join(", ") : "Unconnected"}
+//   A0  (ADC0)-> ${a0Nets.length > 0 ? a0Nets.join(", ") : "Unconnected"}
+#include <avr/io.h>
+#include <util/delay.h>
+
+void setup() {
+  DDRB |= (1 << PB5) | (1 << PB3) | (1 << PB1); // D13, D11, D9 as OUTPUT
+  Serial.begin(9600);
+  Serial.println("WORKSPACE_SYNC_OK: ${components.length}_PARTS");
+}
+
+void loop() {
+  int adcA0 = analogRead(A0); // Live A0 = ${uno ? (uno.pinVoltages.A0 ?? 0).toFixed(2) : "0.00"}V (${uno?.state?.adcA0 ?? 0}/1023)
+  if (adcA0 > 450) {
+    digitalWrite(9, HIGH); // Threshold comparator active on D9
+  } else {
+    digitalWrite(9, LOW);
+  }
+  PORTB |= (1 << PB5);
+  analogWrite(11, ${Math.round((duty / 100) * 255)}); // ${duty}% PWM Duty Cycle
+  delay(${halfPeriodMs});
+  PORTB &= ~(1 << PB5);
+  delay(${halfPeriodMs});
+}`;
+      runIdeCompiler();
+      showToast("Generated AVR C firmware from live workspace");
+    } else {
+      const fpga = getOrEnsureFpga();
+      const i0Nets = connectedNames(fpga.id, "I0");
+      const i1Nets = connectedNames(fpga.id, "I1");
+      const i2Nets = connectedNames(fpga.id, "I2");
+      const i3Nets = connectedNames(fpga.id, "I3");
+      const y0Nets = connectedNames(fpga.id, "Y0");
+      const y1Nets = connectedNames(fpga.id, "Y1");
+      const prof = FPGA_PROFILES[fpga.fpgaProfile ?? "FULL-ADD"] ?? FPGA_PROFILES["FULL-ADD"];
+
+      verilogSourceCode = `// Auto-Generated Verilog HDL from Live Workspace (${components.length} parts, ${wires.length} wires)
+// Active FPGA Profile: ${fpga.fpgaProfile ?? "CUSTOM"} (LUT0=0x${(fpga.fpgaLutY0 ?? prof.lutY0).toString(16).toUpperCase()}, LUT1=0x${(fpga.fpgaLutY1 ?? prof.lutY1).toString(16).toUpperCase()})
+// Pin Netlist:
+//   I0 <- ${i0Nets.length > 0 ? i0Nets.join(", ") : "0V"} | I1 <- ${i1Nets.length > 0 ? i1Nets.join(", ") : "0V"}
+//   I2 <- ${i2Nets.length > 0 ? i2Nets.join(", ") : "0V"} | I3 <- ${i3Nets.length > 0 ? i3Nets.join(", ") : "0V"}
+//   Y0 -> ${y0Nets.length > 0 ? y0Nets.join(", ") : "Open"} | Y1 -> ${y1Nets.length > 0 ? y1Nets.join(", ") : "Open"}
+module fpga_clb (
+  input  I0, I1, I2, I3,
+  output Y0, Y1
+);
+  assign Y0 = I0 ^ I1 ^ I2;
+  assign Y1 = (I0 & I1) | (I1 & I2) | (I0 & I2);
+endmodule`;
+      runIdeCompiler();
+      showToast("Generated Verilog HDL from live workspace");
+    }
   }
 
   function getOrEnsureFpga(): CircuitComponent {
@@ -1084,7 +1268,20 @@
     const y1 = pos1.y * GRID;
     const x2 = pos2.x * GRID;
     const y2 = pos2.y * GRID;
-    return { x1, y1, mx: x2, my: y1, x2, y2 };
+    let mx = x2;
+    let my = y1;
+    // Choose the L-bend corner that avoids passing directly through another component center
+    const corner1Blocked = components.some(
+      (c) =>
+        c.id !== w.fromCompId &&
+        c.id !== w.toCompId &&
+        Math.hypot(c.x * GRID - x2, c.y * GRID - y1) < GRID * 0.9,
+    );
+    if (corner1Blocked) {
+      mx = x1;
+      my = y2;
+    }
+    return { x1, y1, mx, my, x2, y2 };
   }
 
   function wireColor(v: number): string {
@@ -1170,11 +1367,20 @@
         0
       );
     }
-    if (comp.type === "C" || comp.type === "R" || comp.type === "L") {
+    if (comp.type === "C" || comp.type === "R" || comp.type === "L" || comp.type === "FUSE") {
       return (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.B ?? 0);
     }
-    if (comp.type === "LED" || comp.type === "DIODE") {
+    if (comp.type === "POT") {
+      return comp.pinVoltages.W ?? 0;
+    }
+    if (comp.type === "LED" || comp.type === "DIODE" || comp.type === "ZENER" || comp.type === "BUZZER") {
       return (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.K ?? 0);
+    }
+    if (comp.type === "SR_LATCH" || comp.type === "DFF") {
+      return comp.pinVoltages.Q ?? 0;
+    }
+    if (comp.type === "COUNTER4" || comp.type === "SHIFT4") {
+      return comp.pinVoltages.Q0 ?? 0;
     }
     if (comp.type === "VDC" || comp.type === "VAC") {
       return (comp.pinVoltages.POS ?? 0) - (comp.pinVoltages.NEG ?? 0);
@@ -1486,6 +1692,7 @@
   $: selectedComp = components.find((c) => c.id === selectedCompId) ?? null;
 </script>
 
+<!-- UNCLUTTERED PEACH BANNER: 5 Clean Subpages + Preset Picker + Run Controls -->
 <!-- UNCLUTTERED PEACH BANNER: Clean Subpages + Physics Mode + Preset Picker + Run Controls -->
 <header class="peach-banner">
   <div class="banner-left">
@@ -1497,6 +1704,7 @@
         setHover(
           e,
           "CircuitFab CIRCUIT & SILICON STUDIO",
+          "Desmos-style MNA Circuit Solver, FPGA LUT4 Synthesizer, Low-Level Compiler & Stress Chamber",
           "MNA Circuit Solver, FPGA LUT4 Synthesizer, Low-Level Compiler & Stress Chamber",
         )}
       on:mousemove={moveHover}
@@ -2076,7 +2284,7 @@
                   stroke-width="1.5"
                   fill="none"
                 />
-              {:else if item.type === "DIODE"}
+              {:else if item.type === "DIODE" || item.type === "ZENER"}
                 <line
                   x1="-22"
                   y1="0"
@@ -2091,11 +2299,40 @@
                   width="22"
                   height="12"
                   rx="2"
-                  fill="#24292F"
+                  fill={item.type === "ZENER" ? "#B45309" : "#24292F"}
                   stroke="#1F2328"
                   stroke-width="1.5"
                 />
                 <rect x="4" y="-6" width="3.5" height="12" fill="#E5E7EB" />
+              {:else if item.type === "POT"}
+                <rect
+                  x="-13"
+                  y="-9"
+                  width="26"
+                  height="18"
+                  rx="3"
+                  fill="#1E3A8A"
+                  stroke="#1F2328"
+                  stroke-width="1.6"
+                />
+                <circle cx="0" cy="0" r="6" fill="#FACC15" stroke="#1F2328" stroke-width="1.4" />
+                <line x1="0" y1="0" x2="4" y2="-4" stroke="#1F2328" stroke-width="1.8" />
+              {:else if item.type === "FUSE"}
+                <line x1="-22" y1="0" x2="22" y2="0" stroke="#1F2328" stroke-width="2" />
+                <rect
+                  x="-12"
+                  y="-6"
+                  width="24"
+                  height="12"
+                  rx="2"
+                  fill="#E0F2FE"
+                  stroke="#1F2328"
+                  stroke-width="1.6"
+                />
+                <path d="M-8 0 Q-4 -4 0 0 Q4 4 8 0" fill="none" stroke="#C74440" stroke-width="1.8" />
+              {:else if item.type === "BUZZER"}
+                <circle cx="0" cy="0" r="11" fill="#24292F" stroke="#1F2328" stroke-width="1.6" />
+                <circle cx="0" cy="0" r="3.5" fill="#FA7E19" />
               {:else if item.type === "NPN" || item.type === "PNP" || item.type === "NMOS"}
                 <line
                   x1="-7"
@@ -2245,23 +2482,20 @@
                   stroke="#1F2328"
                   stroke-width="1.6"
                 />
-              {:else if item.type === "DFF"}
+              {:else if item.type === "DFF" || item.type === "SR_LATCH" || item.type === "COUNTER4" || item.type === "SHIFT4"}
                 <rect
-                  x="-13"
+                  x="-14"
                   y="-12"
-                  width="26"
+                  width="28"
                   height="24"
                   rx="3"
                   fill="#FFFFFF"
                   stroke="#1F2328"
                   stroke-width="1.8"
                 />
-                <path
-                  d="M-13 3 L-7 7 L-13 11"
-                  fill="none"
-                  stroke="#1F2328"
-                  stroke-width="1.6"
-                />
+                <text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#1F2328">
+                  {item.type === "COUNTER4" ? "CNT" : item.type === "SHIFT4" ? "SR4" : item.type === "SR_LATCH" ? "S/R" : "DFF"}
+                </text>
               {:else if item.type === "SEG7"}
                 <rect
                   x="-12"
@@ -2499,7 +2733,14 @@
                 <div class="expr-equation">
                   <span class="expr-name">{comp.label}</span>
                   {#if comp.blown}
-                    <span class="blown-badge">BLOWN!</span>
+                    <span class="blown-badge">{comp.failureReason ? comp.failureReason.split(" ")[0] : "BLOWN!"}</span>
+                    <button
+                      class="mini-repair-btn"
+                      on:click|stopPropagation={() => repairComponent(comp.id)}
+                      title="Repair this component (upgrades low-Ohm resistor to 220Ω)"
+                    >
+                      FIX
+                    </button>
                   {:else if comp.failureReason}
                     <span class="overload-badge">OVERLOAD</span>
                   {:else if comp.type === "LOGIC_IN" || comp.type === "SW"}
@@ -2531,6 +2772,12 @@
                       >= 0x{(comp.state?.hexVal ?? 0)
                         .toString(16)
                         .toUpperCase()}</span
+                    >
+                  {:else if comp.type === "COUNTER4" || comp.type === "SHIFT4"}
+                    <span class="expr-val"
+                      >= {(comp.state?.cnt ?? 0)
+                        .toString(2)
+                        .padStart(4, "0")} ({comp.state?.cnt ?? 0})</span
                     >
                   {:else if comp.type !== "GND" && comp.type !== "CUSTOM_IC"}
                     <span class="expr-val"
@@ -2565,7 +2812,7 @@
                 </div>
               </div>
 
-              {#if !comp.blown && comp.type !== "GND" && comp.type !== "CUSTOM_IC" && comp.type !== "SW" && comp.type !== "LOGIC_IN" && comp.type !== "SEG7" && comp.type !== "FPGA"}
+              {#if comp.type !== "GND" && comp.type !== "CUSTOM_IC" && comp.type !== "SW" && comp.type !== "LOGIC_IN" && comp.type !== "SEG7" && comp.type !== "FPGA" && comp.type !== "COUNTER4" && comp.type !== "SHIFT4" && comp.type !== "SR_LATCH"}
                 <div class="slider-wrap">
                   {#if cat.logScale}
                     <input
@@ -2579,6 +2826,11 @@
                           parseFloat(e.currentTarget.value),
                           cat,
                         );
+                        if (comp.blown) {
+                          comp.blown = false;
+                          comp.failureReason = undefined;
+                          stressConfig.repairGraceUntil = simTime + 0.08;
+                        }
                         components = [...components];
                       }}
                     />
@@ -2589,16 +2841,23 @@
                       max={cat.maxVal}
                       step={cat.stepVal}
                       bind:value={comp.value}
-                      on:input={() => (components = [...components])}
+                      on:input={() => {
+                        if (comp.blown) {
+                          comp.blown = false;
+                          comp.failureReason = undefined;
+                          stressConfig.repairGraceUntil = simTime + 0.08;
+                        }
+                        components = [...components];
+                      }}
                     />
                   {/if}
                 </div>
               {/if}
 
-              {#if !comp.blown && cat.param2Label && comp.param2 !== undefined}
+              {#if cat.param2Label && comp.param2 !== undefined}
                 <div class="slider-wrap secondary-row">
                   <span class="param2-label"
-                    >{cat.param2Label}: {comp.param2}{cat.param2Label === "DUTY"
+                    >{cat.param2Label}: {comp.param2}{cat.param2Label === "DUTY" || cat.param2Label === "WIPER"
                       ? "%"
                       : "Hz"}</span
                   >
@@ -2777,11 +3036,41 @@
               >
                 ∿ SCOPE
               </button>
+              <button
+                class="mini-pill"
+                on:click={cleanUnconnectedParts}
+                on:mouseenter={(e) =>
+                  setHover(
+                    e,
+                    "CLEAN UNWIRED PARTS",
+                    "Remove any floating, unconnected components sitting on the board",
+                  )}
+                on:mousemove={moveHover}
+                on:mouseleave={clearHover}
+              >
+                CLEAN UNWIRED
+              </button>
             </div>
 
             {#if selectedComp}
               <div class="selected-toolbar">
                 <span class="sel-title">{selectedComp.label}</span>
+                {#if selectedComp.blown}
+                  <button
+                    class="sel-btn fix-pill-btn"
+                    on:click={() => repairComponent(selectedComp.id)}
+                    on:mouseenter={(e) =>
+                      setHover(
+                        e,
+                        "REPAIR COMPONENT",
+                        "Restore this burned-out component (upgrades low-Ohm resistor to 220Ω)",
+                      )}
+                    on:mousemove={moveHover}
+                    on:mouseleave={clearHover}
+                  >
+                    REPAIR PART
+                  </button>
+                {/if}
                 <button
                   class="sel-btn"
                   on:click={() => autoWireComponent(selectedComp.id)}
@@ -2810,7 +3099,7 @@
                 >
                   ↻ ROTATE
                 </button>
-                {#if selectedComp.type === "LED" || selectedComp.type === "DIODE" || selectedComp.type === "VDC"}
+                {#if selectedComp.type === "LED" || selectedComp.type === "DIODE" || selectedComp.type === "ZENER" || selectedComp.type === "VDC" || selectedComp.type === "BUZZER"}
                   <button
                     class="sel-btn"
                     on:click={() => flipPolarity(selectedComp.id)}
@@ -3440,7 +3729,7 @@
                         stroke="#1F2328"
                         stroke-width="2.5"
                       />
-                    {:else if comp.type === "DIODE" || comp.type === "LED"}
+                    {:else if comp.type === "DIODE" || comp.type === "LED" || comp.type === "ZENER"}
                       {@const isLit =
                         !comp.blown &&
                         comp.type === "LED" &&
@@ -3515,18 +3804,27 @@
                         />
                         <polygon
                           points="-14,-14 -14,14 14,0"
-                          fill={isLit ? "#EF4444" : "#FFFFFF"}
+                          fill={isLit ? "#EF4444" : comp.type === "ZENER" ? "#FEF3C7" : "#FFFFFF"}
                           stroke="#1F2328"
                           stroke-width="2.5"
                         />
-                        <line
-                          x1="14"
-                          y1="-15"
-                          x2="14"
-                          y2="15"
-                          stroke="#1F2328"
-                          stroke-width="3"
-                        />
+                        {#if comp.type === "ZENER"}
+                          <path
+                            d="M8 -15 H14 V15 H20"
+                            fill="none"
+                            stroke="#1F2328"
+                            stroke-width="3"
+                          />
+                        {:else}
+                          <line
+                            x1="14"
+                            y1="-15"
+                            x2="14"
+                            y2="15"
+                            stroke="#1F2328"
+                            stroke-width="3"
+                          />
+                        {/if}
                         {#if comp.type === "LED"}
                           <path
                             d="M-2 -17 L7 -26 M3 -26 H7 V-22"
@@ -3559,6 +3857,34 @@
                         font-weight="700"
                         fill="#2D70B3">−</text
                       >
+                    {:else if comp.type === "POT"}
+                      <line x1={-GRID * 2} y1={-GRID} x2="-18" y2={-GRID} stroke="#1F2328" stroke-width="2.5" />
+                      <line x1={-GRID * 2} y1={GRID} x2="-18" y2={GRID} stroke="#1F2328" stroke-width="2.5" />
+                      <line x1="18" y1="0" x2={GRID * 2} y2="0" stroke="#1F2328" stroke-width="2.5" />
+                      <rect x="-18" y="-30" width="36" height="60" rx="6" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.5" />
+                      <path d="M0 -22 L-8 -14 L8 -6 L-8 2 L8 10 L-8 18 L0 22" fill="none" stroke="#1F2328" stroke-width="2.3" />
+                      <line x1="18" y1="0" x2="6" y2="0" stroke="#FA7E19" stroke-width="2.6" />
+                      <polygon points="4,0 11,-5 11,5" fill="#FA7E19" />
+                    {:else if comp.type === "FUSE"}
+                      <line x1={-GRID * 2} y1="0" x2="-22" y2="0" stroke="#1F2328" stroke-width="2.5" />
+                      <line x1="22" y1="0" x2={GRID * 2} y2="0" stroke="#1F2328" stroke-width="2.5" />
+                      <rect x="-22" y="-12" width="44" height="24" rx="4" fill={comp.blown ? "#FEE2E2" : "#E0F2FE"} stroke="#1F2328" stroke-width="2.4" />
+                      {#if !comp.blown}
+                        <path d="M-16 0 C-8 -10 0 -10 0 0 C0 10 8 10 16 0" fill="none" stroke="#C74440" stroke-width="2.4" />
+                      {:else}
+                        <line x1="-16" y1="0" x2="-5" y2="-4" stroke="#C74440" stroke-width="2.4" />
+                        <line x1="5" y1="4" x2="16" y2="0" stroke="#C74440" stroke-width="2.4" />
+                      {/if}
+                    {:else if comp.type === "BUZZER"}
+                      {@const isBuzzing = !comp.blown && (comp.state?.buzzing ?? 0) > 0}
+                      <line x1={-GRID * 2} y1="0" x2="-22" y2="0" stroke="#1F2328" stroke-width="2.5" />
+                      <line x1="22" y1="0" x2={GRID * 2} y2="0" stroke="#1F2328" stroke-width="2.5" />
+                      <circle cx="0" cy="0" r="22" fill={isBuzzing ? "#FEF3C7" : "#24292F"} stroke="#1F2328" stroke-width="2.5" />
+                      <circle cx="0" cy="0" r="7" fill={isBuzzing ? "#FA7E19" : "#57606A"} />
+                      {#if isBuzzing}
+                        <path d="M-14 -26 Q0 -34 14 -26" fill="none" stroke="#FA7E19" stroke-width="2.4" />
+                        <path d="M-20 -32 Q0 -42 20 -32" fill="none" stroke="#FA7E19" stroke-width="2" />
+                      {/if}
                     {:else if comp.type === "NPN" || comp.type === "PNP"}
                       {#if physicalDrawingMode}
                         <line
@@ -3966,7 +4292,7 @@
                         stroke="#1F2328"
                         stroke-width="2.5"
                       />
-                    {:else if comp.type === "DFF"}
+                    {:else if comp.type === "DFF" || comp.type === "SR_LATCH"}
                       <rect
                         x="-36"
                         y="-40"
@@ -4009,19 +4335,30 @@
                         stroke="#1F2328"
                         stroke-width="2.5"
                       />
-                      <path
-                        d="M-36 20 L-26 28 L-36 36"
-                        fill="none"
-                        stroke="#1F2328"
-                        stroke-width="2"
-                      />
+                      {#if comp.type === "DFF"}
+                        <path
+                          d="M-36 20 L-26 28 L-36 36"
+                          fill="none"
+                          stroke="#1F2328"
+                          stroke-width="2"
+                        />
+                      {/if}
                       <text
                         x="-22"
                         y={-GRID + 5}
                         font-size="15"
                         font-weight="700"
-                        fill="#1F2328">D</text
+                        fill="#1F2328">{comp.type === "SR_LATCH" ? "S" : "D"}</text
                       >
+                      {#if comp.type === "SR_LATCH"}
+                        <text
+                          x="-22"
+                          y={GRID + 5}
+                          font-size="15"
+                          font-weight="700"
+                          fill="#1F2328">R</text
+                        >
+                      {/if}
                       <text
                         x="20"
                         y={-GRID + 5}
@@ -4038,6 +4375,37 @@
                         font-weight="700"
                         fill="#57606A">~Q</text
                       >
+                    {:else if comp.type === "COUNTER4" || comp.type === "SHIFT4"}
+                      <rect
+                        x="-58"
+                        y="-66"
+                        width="116"
+                        height="132"
+                        rx="7"
+                        fill="#24292F"
+                        stroke="#008184"
+                        stroke-width="2.6"
+                      />
+                      <text
+                        x="0"
+                        y="-6"
+                        text-anchor="middle"
+                        font-size="15.5"
+                        font-weight="700"
+                        fill="#FFD8BE"
+                      >
+                        {comp.type === "COUNTER4" ? "4B COUNTER" : "SHIFT REG"}
+                      </text>
+                      <text
+                        x="0"
+                        y="18"
+                        text-anchor="middle"
+                        font-size="16"
+                        font-weight="700"
+                        fill="#56D364"
+                      >
+                        {(comp.state?.cnt ?? 0).toString(2).padStart(4, "0")} ({comp.state?.cnt ?? 0})
+                      </text>
                     {:else if comp.type === "SEG7"}
                       {@const segs =
                         SEG7_TABLE[comp.state?.hexVal ?? 0] ?? SEG7_TABLE[0]}
@@ -4367,7 +4735,7 @@
                         hoveredPin?.pinId === pin.id}
                       {@const pVolt = comp.pinVoltages[pin.id] ?? 0}
 
-                      {#if comp.type === "ARDUINO" || comp.type === "IC555" || comp.type === "CUSTOM_IC" || comp.type === "FPGA" || comp.type === "SEG7"}
+                      {#if comp.type === "ARDUINO" || comp.type === "IC555" || comp.type === "CUSTOM_IC" || comp.type === "FPGA" || comp.type === "SEG7" || comp.type === "COUNTER4" || comp.type === "SHIFT4"}
                         <rect
                           x={pin.dx < 0 ? px : px - 18}
                           y={py - 4}
@@ -4466,7 +4834,7 @@
                         : isReverseBiasedLed
                           ? `${comp.label} (+/− REVERSED)`
                           : comp.label}
-                    {#if !comp.blown && !comp.failureReason && !isReverseBiasedLed && (comp.type === "R" || comp.type === "C" || comp.type === "L" || comp.type === "VDC")}
+                    {#if !comp.blown && !comp.failureReason && !isReverseBiasedLed && (comp.type === "R" || comp.type === "POT" || comp.type === "FUSE" || comp.type === "ZENER" || comp.type === "C" || comp.type === "L" || comp.type === "VDC")}
                       ({formatSI(comp.value, cat.shortUnit)})
                     {/if}
                   </text>
@@ -5268,9 +5636,18 @@
           </button>
         </div>
 
-        <button class="action-pill ic-pill" on:click={runIdeCompiler}>
-          ▶ COMPILE & FLASH
-        </button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button
+              class="action-pill fpga-pill"
+              on:click={syncWorkspaceToIdeCode}
+              title="Inspect live circuit netlist and generate matching AVR C or Verilog HDL code"
+            >
+              SYNC FROM WORKSPACE
+            </button>
+            <button class="action-pill ic-pill" on:click={runIdeCompiler}>
+              ▶ COMPILE & FLASH
+            </button>
+          </div>
       </div>
 
       {#if ideTarget === "avr"}
@@ -5669,6 +6046,7 @@
               + ADD
             </button>
           </div>
+          <p class="glossary-desc">{item.tooltipPhysics}</p>
           <p class="glossary-desc">{gInfo?.plain ?? item.tooltipPhysics}</p>
           {#if gInfo?.analogy}
             <p class="glossary-analogy"><strong>Analogy:</strong> {gInfo.analogy}</p>
@@ -6031,6 +6409,18 @@
     font-weight: 700;
     padding: 1px 8px;
     border-radius: 5px;
+  }
+
+  .mini-repair-btn,
+  .fix-pill-btn {
+    background-color: var(--green);
+    color: #ffffff;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+    cursor: pointer;
   }
 
   .physics-mode-row {

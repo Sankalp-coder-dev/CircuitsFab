@@ -594,6 +594,49 @@ export const PRESETS: CircuitPreset[] = [
       { id: 'w10', fromCompId: 'LED1', fromPinId: 'K', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
     ],
   },
+  {
+    id: 'zener-reg',
+    label: 'ZENER + FUSE',
+    tooltip: '5.1V Zener Diode Voltage Regulator with 50mA Protective Fuse, Potentiometer Divider, and LED Load',
+    components: [
+      { id: 'V1', type: 'VDC', label: 'VIN', x: 7, y: 11, rotation: 0, value: 9, color: '#C74440', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'F1', type: 'FUSE', label: 'F1', x: 11, y: 8, rotation: 0, value: 0.05, color: '#FA7E19', pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'RS', type: 'R', label: 'RS', x: 16, y: 8, rotation: 0, value: 220, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'DZ1', type: 'ZENER', label: 'Z1', x: 20, y: 12, rotation: 270, value: 5.1, color: '#6042A6', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'RL', type: 'R', label: 'RL', x: 25, y: 8, rotation: 0, value: 330, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'LED1', type: 'LED', label: 'LED1', x: 28, y: 12, rotation: 90, value: 1.8, color: '#C74440', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'GND1', type: 'GND', label: 'GND', x: 20, y: 17, rotation: 0, value: 0, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    ],
+    wires: [
+      { id: 'zw1', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'F1', toPinId: 'A', voltage: 0, current: 0 },
+      { id: 'zw2', fromCompId: 'F1', fromPinId: 'B', toCompId: 'RS', toPinId: 'A', voltage: 0, current: 0 },
+      { id: 'zw3', fromCompId: 'RS', fromPinId: 'B', toCompId: 'DZ1', toPinId: 'K', voltage: 0, current: 0 },
+      { id: 'zw4', fromCompId: 'DZ1', fromPinId: 'A', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
+      { id: 'zw5', fromCompId: 'RS', fromPinId: 'B', toCompId: 'RL', toPinId: 'A', voltage: 0, current: 0 },
+      { id: 'zw6', fromCompId: 'RL', fromPinId: 'B', toCompId: 'LED1', toPinId: 'A', voltage: 0, current: 0 },
+      { id: 'zw7', fromCompId: 'LED1', fromPinId: 'K', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
+      { id: 'zw8', fromCompId: 'V1', fromPinId: 'NEG', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
+    ],
+  },
+  {
+    id: 'counter-hex',
+    label: '4B COUNTER',
+    tooltip: '4-Bit Synchronous Binary Counter IC (CNT-4B) driven by a Clock Oscillator into a 7-Segment Hex Display',
+    components: [
+      { id: 'CLK1', type: 'CLK', label: 'CLK', x: 8, y: 10, rotation: 0, value: 2, color: '#FA7E19', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'RST1', type: 'LOGIC_IN', label: 'RST', x: 8, y: 13, rotation: 0, value: 1, switchClosed: false, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'CNT1', type: 'COUNTER4', label: 'CNT1', x: 16, y: 11, rotation: 0, value: 5, color: '#008184', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'HEX1', type: 'SEG7', label: 'HEX', x: 25, y: 11, rotation: 0, value: 5, color: '#C74440', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    ],
+    wires: [
+      { id: 'cw1', fromCompId: 'CLK1', fromPinId: 'Y', toCompId: 'CNT1', toPinId: 'CLK', voltage: 0, current: 0 },
+      { id: 'cw2', fromCompId: 'RST1', fromPinId: 'Y', toCompId: 'CNT1', toPinId: 'RST', voltage: 0, current: 0 },
+      { id: 'cw3', fromCompId: 'CNT1', fromPinId: 'Q0', toCompId: 'HEX1', toPinId: 'B0', voltage: 0, current: 0 },
+      { id: 'cw4', fromCompId: 'CNT1', fromPinId: 'Q1', toCompId: 'HEX1', toPinId: 'B1', voltage: 0, current: 0 },
+      { id: 'cw5', fromCompId: 'CNT1', fromPinId: 'Q2', toCompId: 'HEX1', toPinId: 'B2', voltage: 0, current: 0 },
+      { id: 'cw6', fromCompId: 'CNT1', fromPinId: 'Q3', toCompId: 'HEX1', toPinId: 'B3', voltage: 0, current: 0 },
+    ],
+  },
 ];
 
 function connectPins(

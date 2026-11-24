@@ -413,7 +413,8 @@ export function renderCircuit3D(
         break;
       }
       case 'LED':
-      case 'DIODE': {
+      case 'DIODE':
+      case 'ZENER': {
         const isLit = !comp.blown && comp.type === 'LED' && comp.branchCurrent > 0.001;
         if (comp.type === 'LED') {
           if (isLit) {
@@ -454,8 +455,9 @@ export function renderCircuit3D(
             14
           );
         } else {
-          // 1N4148 / 1N4007 Axial Diode with Silver Cathode Band
-          drawBox3D(cx, cy, 7, 24, 8, 11, comp.rotation, '#24292F', '#1F2328', '#1F2328');
+          // 1N4148 / Glass Zener DO-35 Axial Diode with Cathode Band
+          const bodyCol = comp.type === 'ZENER' ? '#B45309' : '#24292F';
+          drawBox3D(cx, cy, 7, 24, 8, 11, comp.rotation, bodyCol, '#1F2328', '#1F2328');
           const rad = (comp.rotation * Math.PI) / 180;
           drawBox3D(
             cx + 12 * Math.cos(rad),
@@ -470,6 +472,24 @@ export function renderCircuit3D(
             '#9CA3AF'
           );
         }
+        break;
+      }
+      case 'POT': {
+        // 3D Rotary Potentiometer Box with Brass Shaft & Wiper Slot
+        drawBox3D(cx, cy, 2, 24, 24, 14, comp.rotation, '#1E3A8A', '#1E40AF', '#172554');
+        drawCylinder3D(cx, cy, 16, 12, 12, '#D4AF37', '#FDE047', 14);
+        break;
+      }
+      case 'FUSE': {
+        // 3D Glass Cartridge Fuse with Metallic End-Caps
+        drawBox3D(cx, cy, 7, 26, 9, 12, comp.rotation, comp.blown ? '#7F1D1D' : '#E0F2FE', '#9CA3AF', '#6B7280');
+        break;
+      }
+      case 'BUZZER': {
+        // 3D Cylindrical Black Piezo Buzzer Can with Sound Port Hole
+        const buzzing = (comp.state?.buzzing ?? 0) > 0 && !comp.blown;
+        drawCylinder3D(cx, cy, 2, 22, 18, '#1F2328', buzzing ? '#374151' : '#24292F', 18);
+        drawCylinder3D(cx, cy, 20, 6, 1.5, '#111827', buzzing ? '#FA7E19' : '#111827', 12);
         break;
       }
       case 'NPN':
@@ -654,8 +674,11 @@ export function renderCircuit3D(
       case 'XOR':
       case 'NOT':
       case 'DFF':
+      case 'SR_LATCH':
+      case 'COUNTER4':
+      case 'SHIFT4':
       case 'OPAMP': {
-        const isBigIc = comp.type === 'IC555' || comp.type === 'CUSTOM_IC';
+        const isBigIc = comp.type === 'IC555' || comp.type === 'CUSTOM_IC' || comp.type === 'COUNTER4' || comp.type === 'SHIFT4';
         const hx = isBigIc ? 48 : 30;
         const hy = isBigIc ? 48 : 28;
         const chipAccent =
