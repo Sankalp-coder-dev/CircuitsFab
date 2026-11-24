@@ -1,0 +1,118 @@
+:root {
+  --peach-banner: #FFD8BE;
+  --peach-hover: #FFC8A3;
+  --peach-border: #E5B290;
+  --bg-canvas: #F8F9FA;
+  --bg-panel: #FFFFFF;
+  --bg-card: #F4F5F7;
+  --bg-hover: #ECEEF2;
+  --ink: #1F2328;
+  --ink-muted: #57606A;
+  --ink-subtle: #8C959F;
+  --border: #D8DEE4;
+  --border-focus: #2D70B3;
+  --blue: #2D70B3;
+  --red: #C74440;
+  --green: #388C46;
+  --orange: #FA7E19;
+  --purple: #6042A6;
+  --teal: #008184;
+  --font-main: 'Calibri', 'Carlito', 'Segoe UI', -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  font-family: var(--font-main);
+}
+
+html,
+body,
+#app {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  color: var(--ink);
+  font-family: var(--font-main);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font-family: var(--font-main);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+button:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--ink-muted);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+/* Clean range slider (0 gradients, generous thumb) */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border: none;
+  border-radius: 3px;
+  cursor: ew-resize;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: 2.5px solid #FFFFFF;
+  box-shadow: 0 0 0 1px var(--blue);
+  cursor: ew-resize;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: 2.5px solid #FFFFFF;
+  box-shadow: 0 0 0 1px var(--blue);
+  cursor: ew-resize;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-panel);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-subtle);
+}

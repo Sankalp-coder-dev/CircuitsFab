@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Flat Peach Rounded Square Background -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#FFD8BE" stroke="#1F2328" stroke-width="3.5" />
+
+  <!-- Metallic IC Pins (Left & Right) -->
+  <rect x="7" y="19" width="8" height="5" rx="1.5" fill="#1F2328" />
+  <rect x="7" y="30" width="8" height="5" rx="1.5" fill="#1F2328" />
+  <rect x="7" y="41" width="8" height="5" rx="1.5" fill="#1F2328" />
+
+  <rect x="49" y="19" width="8" height="5" rx="1.5" fill="#1F2328" />
+  <rect x="49" y="30" width="8" height="5" rx="1.5" fill="#1F2328" />
+  <rect x="49" y="41" width="8" height="5" rx="1.5" fill="#1F2328" />
+
+  <!-- Silicon Chip Package Body -->
+  <rect x="14" y="13" width="36" height="38" rx="6" fill="#1F2328" />
+
+  <!-- Internal Signal Trace / Phi Pulse -->
+  <circle cx="32" cy="32" r="10" fill="none" stroke="#FA7E19" stroke-width="3.2" />
+  <path d="M32 18 V46" stroke="#56D364" stroke-width="3.2" stroke-linecap="round" />
+  <circle cx="32" cy="32" r="3.2" fill="#FFD8BE" />
+</svg>
