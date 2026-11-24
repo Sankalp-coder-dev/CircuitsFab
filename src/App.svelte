@@ -102,13 +102,12 @@
   let isPanning3D = false;
   let orbitStart = { x: 0, y: 0, yaw: 0, pitch: 0, panX: 0, panY: 0 };
 
-  // Burnout is OFF by default during normal building & tutorials so beginners never accidentally blow LEDs!
   let stressConfig: StressConfig = {
     ambientTempC: 25,
     voltageSurge: 1.0,
     emiNoiseV: 0.0,
     clockOverdrive: 1.0,
-    burnoutEnabled: false,
+    burnoutEnabled: true,
   };
 
   // Low-Level Open-Source Code IDE & Compiler State

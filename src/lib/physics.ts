@@ -26,7 +26,7 @@ const DEFAULT_STRESS: StressConfig = {
   voltageSurge: 1.0,
   emiNoiseV: 0.0,
   clockOverdrive: 1.0,
-  burnoutEnabled: false,
+  burnoutEnabled: true,
 };
 
 function solveLinearSystem(A: number[][], b: number[]): number[] {
