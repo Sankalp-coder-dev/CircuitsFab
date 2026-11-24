@@ -7,11 +7,13 @@
     ComponentCategory,
     ComponentType,
     CustomChipDefinition,
+    PhysicsMode,
     PinDef,
     ProbeSample,
     StressConfig,
     Wire,
   } from "./lib/types.ts";
+  import { GLOSSARY_INFO } from "./lib/glossary.ts";
   import {
     CATALOG,
     TRACE_COLORS,
@@ -108,7 +110,28 @@
     emiNoiseV: 0.0,
     clockOverdrive: 1.0,
     burnoutEnabled: true,
+    physicsMode: "realistic",
   };
+
+  function setPhysicsMode(mode: PhysicsMode) {
+    stressConfig.physicsMode = mode;
+    stressConfig.burnoutEnabled = mode === "realistic";
+    if (mode !== "realistic") {
+      components = components.map((c) => ({
+        ...c,
+        blown: false,
+        failureReason: mode === "sandbox" ? undefined : c.failureReason,
+      }));
+    }
+    stressConfig = { ...stressConfig };
+    const modeLabel =
+      mode === "realistic"
+        ? "Realistic Physics (Exact + Hardware Burnout)"
+        : mode === "limited"
+          ? "Limited Burnout (Exact Physics + Warnings Only)"
+          : "Sandbox Mode (Ideal Textbook Models, No Burnout)";
+    showToast(`Mode: ${modeLabel}`);
+  }
 
   // Low-Level Open-Source Code IDE & Compiler State
   let ideTarget: "avr" | "verilog" = "avr";
@@ -202,28 +225,8 @@
   }
 
   function runAiPrompt() {
-    if (!aiPrompt.trim()) return;
-    pushHistory();
-    const res = buildCircuitFromPrompt(aiPrompt);
-    components = res.components;
-    wires = res.wires;
-    probeHistory = [];
-    selectedCompId = components[0]?.id ?? null;
-    for (let i = 0; i < 15; i++) {
-      stepCircuitPhysics(
-        components,
-        wires,
-        customChips,
-        simTime,
-        0.002,
-        stressConfig,
-        compiledArduino,
-      );
-    }
-    components = [...components];
-    wires = [...wires];
-    showToast(res.summary);
-    aiPrompt = "";
+    aiReply = askAiTutor(aiMode, aiPrompt, components, wires);
+    if (aiMode !== "explain") aiPrompt = "";
   }
 
   function copyShareUrl() {
@@ -299,7 +302,7 @@
     showTutorialBar = false;
     tutorialCompleted = false;
     activePresetId = preset.id;
-    stressConfig.burnoutEnabled = false;
+    stressConfig.burnoutEnabled = (stressConfig.physicsMode ?? "realistic") === "realistic";
     components = preset.components.map((c) => ({
       ...c,
       blown: false,
@@ -336,7 +339,7 @@
     activePresetId = tut.id;
     tutorialStepIdx = 0;
     tutorialCompleted = false;
-    stressConfig.burnoutEnabled = false;
+    stressConfig.burnoutEnabled = (stressConfig.physicsMode ?? "realistic") === "realistic";
     stressConfig.voltageSurge = 1.0;
     components = tut.initialComponents.map((c) => ({
       ...c,
@@ -608,7 +611,7 @@
     stressConfig.ambientTempC = 25;
     stressConfig.emiNoiseV = 0;
     stressConfig.clockOverdrive = 1.0;
-    stressConfig.burnoutEnabled = false;
+    stressConfig.burnoutEnabled = (stressConfig.physicsMode ?? "realistic") === "realistic";
     components = components.map((c) => ({
       ...c,
       blown: false,
@@ -1271,6 +1274,34 @@
     );
   }
 
+  function renderStress3DViewport() {
+    if (!stress3dEl || activeSubpage !== "stress") return;
+    const rect = stress3dEl.parentElement?.getBoundingClientRect();
+    if (
+      rect &&
+      (stress3dEl.width !== Math.floor(rect.width) ||
+        stress3dEl.height !== Math.floor(rect.height))
+    ) {
+      stress3dEl.width = Math.floor(rect.width);
+      stress3dEl.height = Math.floor(rect.height);
+    }
+    const ctx = stress3dEl.getContext("2d");
+    if (!ctx) return;
+    cam3D.xray = chipXray;
+    renderCircuit3D(
+      ctx,
+      stress3dEl.width,
+      stress3dEl.height,
+      components,
+      wires,
+      customChips,
+      cam3D,
+      GRID,
+      animPhase,
+      selectedCompId,
+    );
+  }
+
   function toSliderVal(
     comp: CircuitComponent,
     cat: ReturnType<typeof getCatalogItem>,
@@ -1396,6 +1427,7 @@
       }
       renderOscilloscope();
       render3DViewport();
+      renderStress3DViewport();
       rafId = requestAnimationFrame(tick);
     };
 
@@ -1450,10 +1482,11 @@
   $: activeFpgaComp = components.find((c) => c.type === "FPGA") ?? null;
   $: activeArduinoComp = components.find((c) => c.type === "ARDUINO") ?? null;
   $: blownCount = components.filter((c) => c.blown).length;
+  $: overloadCount = components.filter((c) => !c.blown && c.failureReason).length;
   $: selectedComp = components.find((c) => c.id === selectedCompId) ?? null;
 </script>
 
-<!-- UNCLUTTERED PEACH BANNER: 5 Clean Subpages + Preset Picker + Run Controls -->
+<!-- UNCLUTTERED PEACH BANNER: Clean Subpages + Physics Mode + Preset Picker + Run Controls -->
 <header class="peach-banner">
   <div class="banner-left">
     <div
@@ -1464,7 +1497,7 @@
         setHover(
           e,
           "CircuitFab CIRCUIT & SILICON STUDIO",
-          "Desmos-style MNA Circuit Solver, FPGA LUT4 Synthesizer, Low-Level Compiler & Stress Chamber",
+          "MNA Circuit Solver, FPGA LUT4 Synthesizer, Low-Level Compiler & Stress Chamber",
         )}
       on:mousemove={moveHover}
       on:mouseleave={clearHover}
@@ -1596,6 +1629,24 @@
   </div>
 
   <div class="banner-right">
+    <select
+      class="preset-select mode-select"
+      value={stressConfig.physicsMode ?? "realistic"}
+      on:change={(e) => setPhysicsMode(e.currentTarget.value as PhysicsMode)}
+      on:mouseenter={(e) =>
+        setHover(
+          e,
+          "PHYSICS & BURNOUT SETTINGS",
+          "REALISTIC: Exact Shockley/Ebers-Moll physics + hardware burnout (e.g. 25Ω on 5V LED = 124.5mA blows LED & Arduino pin). LIMITED: Exact physics + overload warnings without destroying parts. SANDBOX: Ideal textbook models, no burnout.",
+        )}
+      on:mousemove={moveHover}
+      on:mouseleave={clearHover}
+    >
+      <option value="realistic">PHYSICS: REALISTIC</option>
+      <option value="limited">PHYSICS: LIMITED BURNOUT</option>
+      <option value="sandbox">PHYSICS: SANDBOX (IDEAL)</option>
+    </select>
+
     <select
       class="preset-select"
       value={activePresetId}
@@ -2415,8 +2466,10 @@
                 `${comp.label} (${cat.tooltipTitle})`,
                 comp.blown
                   ? `FAILURE: ${comp.failureReason}`
-                  : cat.tooltipPhysics,
-                `V = ${formatElec(vPrimary, "V")} | I = ${formatElec(comp.branchCurrent, "A")} | T = ${(comp.tempC ?? 25).toFixed(0)}°C`,
+                  : comp.failureReason
+                    ? `WARNING: ${comp.failureReason}`
+                    : cat.tooltipPhysics,
+                `V = ${formatElec(vPrimary, "V")} | I = ${formatElec(comp.branchCurrent, "A")} | P = ${formatElec(comp.power, "W")} | T = ${(comp.tempC ?? 25).toFixed(0)}°C`,
               )}
             on:mousemove={moveHover}
             on:mouseleave={clearHover}
@@ -2447,6 +2500,8 @@
                   <span class="expr-name">{comp.label}</span>
                   {#if comp.blown}
                     <span class="blown-badge">BLOWN!</span>
+                  {:else if comp.failureReason}
+                    <span class="overload-badge">OVERLOAD</span>
                   {:else if comp.type === "LOGIC_IN" || comp.type === "SW"}
                     <button
                       class="bit-toggle"
@@ -2659,145 +2714,144 @@
             </div>
           {/if}
 
-          <!-- Floating Top-Left Canvas Drawing Mode Pills -->
-          <div class="canvas-top-pills" class:shifted-down={showTutorialBar}>
-            <button
-              class="mini-pill"
-              class:active={!physicalDrawingMode}
-              on:click={() => (physicalDrawingMode = false)}
-              on:mouseenter={(e) =>
-                setHover(
-                  e,
-                  "SCHEMATIC DIAGRAM",
-                  "Standard IEEE 2D circuit diagram symbols",
-                )}
-              on:mousemove={moveHover}
-              on:mouseleave={clearHover}
-            >
-              DIAGRAM
-            </button>
-            <button
-              class="mini-pill"
-              class:active={physicalDrawingMode}
-              on:click={() => (physicalDrawingMode = true)}
-              on:mouseenter={(e) =>
-                setHover(
-                  e,
-                  "CHIP & PACKAGE DRAWING",
-                  "Physical component drawings & internal silicon die cutaway",
-                )}
-              on:mousemove={moveHover}
-              on:mouseleave={clearHover}
-            >
-              CHIP/PKG
-            </button>
-            <button
-              class="mini-pill"
-              class:active={chipXray}
-              on:click={() => (chipXray = !chipXray)}
-              on:mouseenter={(e) =>
-                setHover(
-                  e,
-                  "SILICON DIE X-RAY",
-                  "Toggle internal chip wafer & bond wire drawing",
-                )}
-              on:mousemove={moveHover}
-              on:mouseleave={clearHover}
-            >
-              DIE
-            </button>
-            <button
-              class="mini-pill"
-              class:active={showScope}
-              on:click={() => (showScope = !showScope)}
-              on:mouseenter={(e) =>
-                setHover(
-                  e,
-                  "OSCILLOSCOPE",
-                  "Toggle bottom-right Desmos waveform graph",
-                )}
-              on:mousemove={moveHover}
-              on:mouseleave={clearHover}
-            >
-              ∿ SCOPE
-            </button>
-          </div>
+          <!-- Unified Non-Overlapping Top Canvas Bar -->
+          <div class="canvas-top-bar" class:shifted-down={showTutorialBar}>
+            <div class="canvas-top-pills">
+              <button
+                class="mini-pill"
+                class:active={!physicalDrawingMode}
+                on:click={() => (physicalDrawingMode = false)}
+                on:mouseenter={(e) =>
+                  setHover(
+                    e,
+                    "SCHEMATIC DIAGRAM",
+                    "Standard IEEE 2D circuit diagram symbols",
+                  )}
+                on:mousemove={moveHover}
+                on:mouseleave={clearHover}
+              >
+                DIAGRAM
+              </button>
+              <button
+                class="mini-pill"
+                class:active={physicalDrawingMode}
+                on:click={() => (physicalDrawingMode = true)}
+                on:mouseenter={(e) =>
+                  setHover(
+                    e,
+                    "CHIP & PACKAGE DRAWING",
+                    "Physical component drawings & internal silicon die cutaway",
+                  )}
+                on:mousemove={moveHover}
+                on:mouseleave={clearHover}
+              >
+                CHIP/PKG
+              </button>
+              <button
+                class="mini-pill"
+                class:active={chipXray}
+                on:click={() => (chipXray = !chipXray)}
+                on:mouseenter={(e) =>
+                  setHover(
+                    e,
+                    "SILICON DIE X-RAY",
+                    "Toggle internal chip wafer & bond wire drawing",
+                  )}
+                on:mousemove={moveHover}
+                on:mouseleave={clearHover}
+              >
+                DIE
+              </button>
+              <button
+                class="mini-pill"
+                class:active={showScope}
+                on:click={() => (showScope = !showScope)}
+                on:mouseenter={(e) =>
+                  setHover(
+                    e,
+                    "OSCILLOSCOPE",
+                    "Toggle bottom-right live waveform graph",
+                  )}
+                on:mousemove={moveHover}
+                on:mouseleave={clearHover}
+              >
+                ∿ SCOPE
+              </button>
+            </div>
 
-          <!--Beginner Contextual Floating Toolbar for Selected Component -->
-          {#if selectedComp}
-            <div class="selected-toolbar" class:shifted-down={showTutorialBar}>
-              <span class="sel-title">{selectedComp.label}</span>
-              <button
-                class="sel-btn"
-                on:click={() => autoWireComponent(selectedComp.id)}
-                on:mouseenter={(e) =>
-                  setHover(
-                    e,
-                    "AUTO-WIRE COMPONENT",
-                    "Automatically connect open pins to nearest circuit nodes",
-                  )}
-                on:mousemove={moveHover}
-                on:mouseleave={clearHover}
-              >
-                AUTO-WIRE
-              </button>
-              <button
-                class="sel-btn"
-                on:click={() => rotateComponent(selectedComp.id)}
-                on:mouseenter={(e) =>
-                  setHover(
-                    e,
-                    "ROTATE 90° [R]",
-                    "Rotate component on the board",
-                  )}
-                on:mousemove={moveHover}
-                on:mouseleave={clearHover}
-              >
-                ↻ ROTATE
-              </button>
-              {#if selectedComp.type === "LED" || selectedComp.type === "DIODE" || selectedComp.type === "VDC"}
+            {#if selectedComp}
+              <div class="selected-toolbar">
+                <span class="sel-title">{selectedComp.label}</span>
                 <button
                   class="sel-btn"
-                  on:click={() => flipPolarity(selectedComp.id)}
+                  on:click={() => autoWireComponent(selectedComp.id)}
                   on:mouseenter={(e) =>
                     setHover(
                       e,
-                      "FLIP + / − POLARITY",
-                      "Reverse Anode (+) and Cathode (−) orientation",
+                      "AUTO-WIRE COMPONENT",
+                      "Automatically connect open pins to nearest circuit nodes",
                     )}
                   on:mousemove={moveHover}
                   on:mouseleave={clearHover}
                 >
-                  ⇄ FLIP +/−
+                  AUTO-WIRE
                 </button>
-              {/if}
-              <button
-                class="sel-btn danger-text"
-                on:click={() => deleteComponent(selectedComp.id)}
-              >
-                ✕
-              </button>
-            </div>
-          {/if}
+                <button
+                  class="sel-btn"
+                  on:click={() => rotateComponent(selectedComp.id)}
+                  on:mouseenter={(e) =>
+                    setHover(
+                      e,
+                      "ROTATE 90° [R]",
+                      "Rotate component on the board",
+                    )}
+                  on:mousemove={moveHover}
+                  on:mouseleave={clearHover}
+                >
+                  ↻ ROTATE
+                </button>
+                {#if selectedComp.type === "LED" || selectedComp.type === "DIODE" || selectedComp.type === "VDC"}
+                  <button
+                    class="sel-btn"
+                    on:click={() => flipPolarity(selectedComp.id)}
+                    on:mouseenter={(e) =>
+                      setHover(
+                        e,
+                        "FLIP + / − POLARITY",
+                        "Reverse Anode (+) and Cathode (−) orientation",
+                      )}
+                    on:mousemove={moveHover}
+                    on:mouseleave={clearHover}
+                  >
+                    ⇄ FLIP +/−
+                  </button>
+                {/if}
+                <button
+                  class="sel-btn danger-text"
+                  on:click={() => deleteComponent(selectedComp.id)}
+                >
+                  ✕
+                </button>
+              </div>
+            {/if}
 
-          <!-- COLLAPSED 3D DRAWER TOGGLE TAB -->
-          {#if !show3DDrawer}
-            <button
-              class="open-3d-tab"
-              class:shifted-down={showTutorialBar}
-              on:click={() => (show3DDrawer = true)}
-              on:mouseenter={(e) =>
-                setHover(
-                  e,
-                  "OPEN 3D PCB VIEW",
-                  "Expand interactive 3D circuit board drawer",
-                )}
-              on:mousemove={moveHover}
-              on:mouseleave={clearHover}
-            >
-              ◀ 3D VIEW
-            </button>
-          {/if}
+            {#if !show3DDrawer}
+              <button
+                class="open-3d-tab"
+                on:click={() => (show3DDrawer = true)}
+                on:mouseenter={(e) =>
+                  setHover(
+                    e,
+                    "OPEN 3D PCB VIEW",
+                    "Expand interactive 3D circuit board drawer",
+                  )}
+                on:mousemove={moveHover}
+                on:mouseleave={clearHover}
+              >
+                ◀ 3D VIEW
+              </button>
+            {/if}
+          </div>
 
           <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
           <svg
@@ -2979,8 +3033,10 @@
                       `${comp.label} — ${cat.tooltipTitle}`,
                       comp.blown
                         ? `BLOWN: ${comp.failureReason}`
-                        : cat.tooltipPhysics,
-                      `V = ${formatElec(getCompPrimaryVoltage(comp), "V")} | I = ${formatElec(comp.branchCurrent, "A")} | T = ${(comp.tempC ?? 25).toFixed(0)}°C`,
+                        : comp.failureReason
+                          ? `WARNING: ${comp.failureReason}`
+                          : cat.tooltipPhysics,
+                      `V = ${formatElec(getCompPrimaryVoltage(comp), "V")} | I = ${formatElec(comp.branchCurrent, "A")} | P = ${formatElec(comp.power, "W")} | T = ${(comp.tempC ?? 25).toFixed(0)}°C`,
                     )}
                   on:mousemove={moveHover}
                   on:mouseleave={clearHover}
@@ -4396,7 +4452,7 @@
                     font-weight="700"
                     fill={comp.blown
                       ? "#C74440"
-                      : isReverseBiasedLed
+                      : comp.failureReason || isReverseBiasedLed
                         ? "#FA7E19"
                         : "#1F2328"}
                     stroke="#F8F9FA"
@@ -4405,10 +4461,12 @@
                   >
                     {comp.blown
                       ? `${comp.label} BLOWN`
-                      : isReverseBiasedLed
-                        ? `${comp.label} (+/− REVERSED)`
-                        : comp.label}
-                    {#if !comp.blown && !isReverseBiasedLed && (comp.type === "R" || comp.type === "C" || comp.type === "L" || comp.type === "VDC")}
+                      : comp.failureReason
+                        ? `${comp.label} OVERLOAD`
+                        : isReverseBiasedLed
+                          ? `${comp.label} (+/− REVERSED)`
+                          : comp.label}
+                    {#if !comp.blown && !comp.failureReason && !isReverseBiasedLed && (comp.type === "R" || comp.type === "C" || comp.type === "L" || comp.type === "VDC")}
                       ({formatSI(comp.value, cat.shortUnit)})
                     {/if}
                   </text>
@@ -5333,6 +5391,44 @@
         </button>
       </div>
 
+      <!-- PHYSICS & BURNOUT MODE SELECTOR -->
+      <div class="physics-mode-row">
+        <button
+          class="prof-btn"
+          class:active={(stressConfig.physicsMode ?? "realistic") === "realistic"}
+          on:click={() => setPhysicsMode("realistic")}
+        >
+          REALISTIC (EXACT + BURNOUT)
+        </button>
+        <button
+          class="prof-btn"
+          class:active={stressConfig.physicsMode === "limited"}
+          on:click={() => setPhysicsMode("limited")}
+        >
+          LIMITED BURNOUT (WARNINGS)
+        </button>
+        <button
+          class="prof-btn"
+          class:active={stressConfig.physicsMode === "sandbox"}
+          on:click={() => setPhysicsMode("sandbox")}
+        >
+          SANDBOX (IDEAL MODELS)
+        </button>
+      </div>
+
+      <!-- LIVE 3D STRESS CHAMBER VIEWPORT -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div
+        class="stress-3d-box"
+        on:pointerdown={on3DPointerDown}
+        on:pointermove={on3DPointerMove}
+        on:pointerup={on3DPointerUp}
+        on:wheel={on3DWheel}
+        on:contextmenu|preventDefault
+      >
+        <canvas bind:this={stress3dEl} class="canvas-3d"></canvas>
+      </div>
+
       <div class="profile-row">
         <button
           class="prof-btn"
@@ -5454,8 +5550,10 @@
               </span>
               {#if comp.blown}
                 <span class="blown-badge">{comp.failureReason ?? "BLOWN"}</span>
+              {:else if comp.failureReason}
+                <span class="overload-badge">{comp.failureReason}</span>
               {:else}
-                <span class="stress-pct">{pct}% LOAD</span>
+                <span class="stress-pct">{pct}% LOAD · {formatElec(comp.branchCurrent, "A")}</span>
               {/if}
             </div>
             <div class="stress-bar-bg">
@@ -5556,6 +5654,7 @@
               .includes(glossarySearch.toLowerCase()) || item.tooltipPhysics
               .toLowerCase()
               .includes(glossarySearch.toLowerCase()))) as item}
+        {@const gInfo = GLOSSARY_INFO[item.type]}
         <div class="glossary-card">
           <div class="glossary-card-top">
             <span class="glossary-badge">{item.label}</span>
@@ -5570,7 +5669,13 @@
               + ADD
             </button>
           </div>
-          <p class="glossary-desc">{item.tooltipPhysics}</p>
+          <p class="glossary-desc">{gInfo?.plain ?? item.tooltipPhysics}</p>
+          {#if gInfo?.analogy}
+            <p class="glossary-analogy"><strong>Analogy:</strong> {gInfo.analogy}</p>
+          {/if}
+          {#if gInfo?.formulaHtml}
+            <div class="math-pill">{@html gInfo.formulaHtml}</div>
+          {/if}
           <div class="glossary-pins">
             {#each item.pins as pin}
               <span class="pin-chip"
@@ -5919,6 +6024,26 @@
     border-radius: 5px;
   }
 
+  .overload-badge {
+    background-color: var(--orange);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 5px;
+  }
+
+  .physics-mode-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .mode-select {
+    border-color: var(--ink);
+    background-color: #fff9f5;
+  }
+
   .bit-toggle {
     padding: 2px 9px;
     font-size: 15px;
@@ -6079,14 +6204,30 @@
     color: #ffffff;
   }
 
+  .canvas-top-bar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 18;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    pointer-events: none;
+  }
+
+  .canvas-top-bar.shifted-down {
+    top: 108px;
+  }
+
   .canvas-top-pills {
     display: flex;
     gap: 6px;
     pointer-events: auto;
   }
 
-  .canvas-top-pills.shifted-down,
-  .open-3d-tab.shifted-down,
   .selected-toolbar {
     background-color: var(--bg-panel);
     border: 1.5px solid var(--blue);
@@ -6132,10 +6273,7 @@
   }
 
   .open-3d-tab {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    z-index: 15;
+    pointer-events: auto;
     padding: 7px 14px;
     font-size: 15.5px;
     font-weight: 700;

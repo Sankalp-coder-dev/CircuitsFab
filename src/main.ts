@@ -1,12 +1,16 @@
 import { mount } from 'svelte';
 import './app.css';
 import App from './App.svelte';
-import { inject } from '@vercel/analytics';
 
 const target = document.getElementById('app')!;
 
-// Initialize Vercel Analytics
-inject();
+// Initialize Vercel Web Analytics in production without requiring node_modules/@vercel/analytics locally
+if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+  const s = document.createElement('script');
+  s.defer = true;
+  s.src = '/_vercel/insights/script.js';
+  document.head.appendChild(s);
+}
 
 try {
   mount(App, { target });

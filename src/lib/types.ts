@@ -55,7 +55,10 @@ export interface CustomChipDefinition {
   subcircuit: CustomChipSubNode[];
 }
 
+export type PhysicsMode = 'realistic' | 'limited' | 'sandbox';
+
 export interface StressConfig {
+  physicsMode?: PhysicsMode; // 'realistic' (exact + burnout), 'limited' (exact + warnings only), 'sandbox' (ideal textbook)
   ambientTempC: number;    // -40°C to +150°C (default 25°C)
   voltageSurge: number;    // 0.5x to 3.0x supply multiplier (default 1.0x)
   emiNoiseV: number;       // 0.0V to 2.5V random electromagnetic interference spike
@@ -132,6 +135,7 @@ export interface CatalogItem {
   maxParam2?: number;
   stepParam2?: number;
   maxPowerW: number;
+  maxCurrentA?: number;
   maxVoltageV: number;
   tooltipTitle: string;
   tooltipPhysics: string;

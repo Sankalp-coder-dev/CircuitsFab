@@ -247,10 +247,11 @@ export const CATALOG: CatalogItem[] = [
     minVal: 1.6,
     maxVal: 3.2,
     stepVal: 0.1,
-    maxPowerW: 0.085, // ~35mA @ 2.4V max before LED burnout
-    maxVoltageV: 5.5,
-    tooltipTitle: 'Light-Emitting Diode (Max 35mA)',
-    tooltipPhysics: 'Shockley PN junction; glows when forward-biased, burns out if current > 40mA',
+    maxPowerW: 0.065,
+    maxCurrentA: 0.03, // 30mA continuous max (20mA nominal, >35mA blows)
+    maxVoltageV: 5.0,
+    tooltipTitle: 'Light-Emitting Diode (20mA Nominal, 30mA Max)',
+    tooltipPhysics: 'Shockley PN junction calibrated to Vf; requires a series current-limiting resistor (e.g. 220Ω on 5V)',
     pins: [
       { id: 'A', label: 'A', dx: -2, dy: 0, description: 'Anode (+)' },
       { id: 'K', label: 'K', dx: 2, dy: 0, description: 'Cathode (−)' },
@@ -578,10 +579,11 @@ export const CATALOG: CatalogItem[] = [
     minParam2: 10,
     maxParam2: 90,
     stepParam2: 5,
-    maxPowerW: 0.5,
-    maxVoltageV: 7.5,
-    tooltipTitle: 'Arduino Uno R3 (Open-Source ATmega328P)',
-    tooltipPhysics: '5V/GND rails, Digital PWM outputs (D13/D11/D9), and 10-bit Analog ADC input (A0)',
+    maxPowerW: 0.2,
+    maxCurrentA: 0.04, // 40mA absolute max per ATmega328P GPIO pin
+    maxVoltageV: 6.0,
+    tooltipTitle: 'Arduino Uno R3 (ATmega328P, 40mA Max/Pin)',
+    tooltipPhysics: '5V/GND rails, Digital PWM outputs (D13/D11/D9, max 40mA per pin), and 10-bit Analog ADC input (A0)',
     pins: [
       { id: 'VCC', label: '5V', dx: -4, dy: -2, description: '+5.0V Regulated Supply' },
       { id: 'GND', label: 'GND', dx: -4, dy: 0, description: '0V Ground Reference' },
