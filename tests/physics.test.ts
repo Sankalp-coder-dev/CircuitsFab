@@ -127,3 +127,116 @@ test('All 8 presets and 3 tutorials run in Realistic mode with zero unintended b
     }
   }
 });
+
+test('Zener diode regulator: 9V through 220Ω clamps reverse node near 5.1V', () => {
+  const comps: CircuitComponent[] = [
+    { id: 'V1', type: 'VDC', label: 'V1', x: 0, y: 0, rotation: 0, value: 9, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'R1', type: 'R', label: 'R1', x: 4, y: 0, rotation: 0, value: 220, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'Z1', type: 'ZENER', label: 'Z1', x: 8, y: 2, rotation: 0, value: 5.1, color: '#6042A6', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'G1', type: 'GND', label: 'GND', x: 8, y: 6, rotation: 0, value: 0, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+  ];
+  const wires: Wire[] = [
+    { id: 'w1', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'R1', toPinId: 'A', voltage: 0, current: 0 },
+    { id: 'w2', fromCompId: 'R1', fromPinId: 'B', toCompId: 'Z1', toPinId: 'K', voltage: 0, current: 0 },
+    { id: 'w3', fromCompId: 'Z1', fromPinId: 'A', toCompId: 'G1', toPinId: 'GND', voltage: 0, current: 0 },
+    { id: 'w4', fromCompId: 'V1', fromPinId: 'NEG', toCompId: 'G1', toPinId: 'GND', voltage: 0, current: 0 },
+  ];
+  runSteps(comps, wires, makeStress('realistic'));
+  const vz = comps.find((c) => c.id === 'Z1')!.pinVoltages.K ?? 0;
+  assert.ok(Math.abs(vz - 5.1) < 0.25, `Expected Zener clamp ~5.1V, got ${vz}`);
+});
+
+test('NPN transistor switch: saturates cleanly and drives 220Ω + LED load', () => {
+  const comps: CircuitComponent[] = [
+    { id: 'V1', type: 'VDC', label: 'V1', x: 0, y: 0, rotation: 0, value: 5, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'RB', type: 'R', label: 'RB', x: 4, y: 2, rotation: 0, value: 2200, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'RC', type: 'R', label: 'RC', x: 8, y: 0, rotation: 0, value: 220, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'D1', type: 'LED', label: 'LED1', x: 10, y: 0, rotation: 0, value: 1.8, color: '#C74440', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'Q1', type: 'NPN', label: 'Q1', x: 10, y: 4, rotation: 0, value: 120, color: '#FA7E19', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'G1', type: 'GND', label: 'GND', x: 10, y: 8, rotation: 0, value: 0, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+  ];
+  const wires: Wire[] = [
+    { id: 'w1', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'RB', toPinId: 'A', voltage: 0, current: 0 },
+    { id: 'w2', fromCompId: 'RB', fromPinId: 'B', toCompId: 'Q1', toPinId: 'B', voltage: 0, current: 0 },
+    { id: 'w3', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'RC', toPinId: 'A', voltage: 0, current: 0 },
+    { id: 'w4', fromCompId: 'RC', fromPinId: 'B', toCompId: 'D1', toPinId: 'A', voltage: 0, current: 0 },
+    { id: 'w5', fromCompId: 'D1', fromPinId: 'K', toCompId: 'Q1', toPinId: 'C', voltage: 0, current: 0 },
+    { id: 'w6', fromCompId: 'Q1', fromPinId: 'E', toCompId: 'G1', toPinId: 'GND', voltage: 0, current: 0 },
+    { id: 'w7', fromCompId: 'V1', fromPinId: 'NEG', toCompId: 'G1', toPinId: 'GND', voltage: 0, current: 0 },
+  ];
+  runSteps(comps, wires, makeStress('realistic'));
+  const q1 = comps.find((c) => c.id === 'Q1')!;
+  const led = comps.find((c) => c.id === 'D1')!;
+  const vce = (q1.pinVoltages.C ?? 0) - (q1.pinVoltages.E ?? 0);
+  assert.ok(vce < 0.35, `Expected Q1 in saturation (Vce < 0.35V), got ${vce}`);
+  assert.ok(led.branchCurrent > 0.01, `Expected LED current > 10mA, got ${led.branchCurrent}`);
+});
+
+test('NMOS low-side switch: conducts Drain-to-Source when Vgs > Vth', () => {
+  const comps: CircuitComponent[] = [
+    { id: 'V1', type: 'VDC', label: 'V1', x: 0, y: 0, rotation: 0, value: 5, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'R1', type: 'R', label: 'R1', x: 4, y: 0, rotation: 0, value: 1000, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'M1', type: 'NMOS', label: 'M1', x: 8, y: 2, rotation: 0, value: 1.5, color: '#FA7E19', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'G1', type: 'GND', label: 'GND', x: 8, y: 6, rotation: 0, value: 0, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+  ];
+  const wires: Wire[] = [
+    { id: 'w1', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'M1', toPinId: 'G', voltage: 0, current: 0 },
+    { id: 'w2', fromCompId: 'V1', fromPinId: 'POS', toCompId: 'R1', toPinId: 'A', voltage: 0, current: 0 },
+    { id: 'w3', fromCompId: 'R1', fromPinId: 'B', toCompId: 'M1', toPinId: 'D', voltage: 0, current: 0 },
+    { id: 'w4', fromCompId: 'M1', fromPinId: 'S', toCompId: 'G1', toPinId: 'GND', voltage: 0, current: 0 },
+    { id: 'w5', fromCompId: 'V1', fromPinId: 'NEG', toCompId: 'G1', toPinId: 'GND', voltage: 0, current: 0 },
+  ];
+  runSteps(comps, wires, makeStress('realistic'));
+  const m1 = comps.find((c) => c.id === 'M1')!;
+  const vds = (m1.pinVoltages.D ?? 0) - (m1.pinVoltages.S ?? 0);
+  assert.ok(vds < 0.5, `Expected NMOS ON (Vds < 0.5V), got ${vds}`);
+});
+
+test('4-Bit Counter + 7-Segment Display: counts rising clock edges accurately', () => {
+  const comps: CircuitComponent[] = [
+    { id: 'CLK1', type: 'LOGIC_IN', label: 'CLK', x: 0, y: 0, rotation: 0, value: 1, switchClosed: false, color: '#FA7E19', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'RST1', type: 'LOGIC_IN', label: 'RST', x: 0, y: 2, rotation: 0, value: 1, switchClosed: false, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'CNT1', type: 'COUNTER4', label: 'CNT1', x: 6, y: 0, rotation: 0, value: 5, color: '#008184', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'HEX1', type: 'SEG7', label: 'HEX', x: 12, y: 0, rotation: 0, value: 5, color: '#C74440', pinVoltages: {}, branchCurrent: 0, power: 0 },
+  ];
+  const wires: Wire[] = [
+    { id: 'w1', fromCompId: 'CLK1', fromPinId: 'Y', toCompId: 'CNT1', toPinId: 'CLK', voltage: 0, current: 0 },
+    { id: 'w2', fromCompId: 'RST1', fromPinId: 'Y', toCompId: 'CNT1', toPinId: 'RST', voltage: 0, current: 0 },
+    { id: 'w3', fromCompId: 'CNT1', fromPinId: 'Q0', toCompId: 'HEX1', toPinId: 'B0', voltage: 0, current: 0 },
+    { id: 'w4', fromCompId: 'CNT1', fromPinId: 'Q1', toCompId: 'HEX1', toPinId: 'B1', voltage: 0, current: 0 },
+    { id: 'w5', fromCompId: 'CNT1', fromPinId: 'Q2', toCompId: 'HEX1', toPinId: 'B2', voltage: 0, current: 0 },
+    { id: 'w6', fromCompId: 'CNT1', fromPinId: 'Q3', toCompId: 'HEX1', toPinId: 'B3', voltage: 0, current: 0 },
+  ];
+  const stress = makeStress('realistic');
+  for (let pulse = 0; pulse < 5; pulse++) {
+    comps[0].switchClosed = true;
+    runSteps(comps, wires, stress, 3);
+    comps[0].switchClosed = false;
+    runSteps(comps, wires, stress, 3);
+  }
+  assert.equal(comps.find((c) => c.id === 'CNT1')!.state?.cnt, 5);
+  assert.equal(comps.find((c) => c.id === 'HEX1')!.state?.hexVal, 5);
+});
+
+test('SR Latch memory: Set latches Q=5V, Hold retains Q=5V, Reset clears Q=0V', () => {
+  const comps: CircuitComponent[] = [
+    { id: 'S1', type: 'LOGIC_IN', label: 'S', x: 0, y: 0, rotation: 0, value: 1, switchClosed: true, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'R1', type: 'LOGIC_IN', label: 'R', x: 0, y: 2, rotation: 0, value: 1, switchClosed: false, color: '#C74440', pinVoltages: {}, branchCurrent: 0, power: 0 },
+    { id: 'L1', type: 'SR_LATCH', label: 'L1', x: 6, y: 0, rotation: 0, value: 5, color: '#6042A6', pinVoltages: {}, branchCurrent: 0, power: 0 },
+  ];
+  const wires: Wire[] = [
+    { id: 'w1', fromCompId: 'S1', fromPinId: 'Y', toCompId: 'L1', toPinId: 'S', voltage: 0, current: 0 },
+    { id: 'w2', fromCompId: 'R1', fromPinId: 'Y', toCompId: 'L1', toPinId: 'R', voltage: 0, current: 0 },
+  ];
+  const stress = makeStress('realistic');
+  runSteps(comps, wires, stress, 5);
+  assert.ok((comps[2].pinVoltages.Q ?? 0) > 4.5, 'Expected Q=5V after Set');
+
+  comps[0].switchClosed = false;
+  runSteps(comps, wires, stress, 5);
+  assert.ok((comps[2].pinVoltages.Q ?? 0) > 4.5, 'Expected Q=5V held when S=0, R=0');
+
+  comps[1].switchClosed = true;
+  runSteps(comps, wires, stress, 5);
+  assert.ok((comps[2].pinVoltages.Q ?? 0) < 0.5, 'Expected Q=0V after Reset');
+});
