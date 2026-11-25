@@ -305,7 +305,7 @@ export function askAiTutor(
 
   return {
     mode,
-    title: `Live Workspace Physics Analysis (${components.length} Parts, ${wires.length} Wires)`,
-    body: `${ws.partSummary} ${ws.connectionSummary} ${ws.physicsBreakdown} ${ws.diagnosticSummary}`,
+    title: `Circuit Summary (${components.length} Parts)`,
+    body: `${ws.diagnosticSummary} ${ws.physicsBreakdown || 'Click any part or pin to inspect its live voltage and current, or switch to PARTS mode to learn what each component does.'}`,
   };
 }

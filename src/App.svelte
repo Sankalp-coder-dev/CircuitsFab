@@ -576,15 +576,22 @@
       }
 
       if (bestMatch) {
-        newWires.push({
-          id: `w_aw_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-          fromCompId: target.id,
-          fromPinId: tPin.id,
-          toCompId: bestMatch.compId,
-          toPinId: bestMatch.pinId,
-          voltage: 0,
-          current: 0,
-        });
+        const alreadyUsedPin = newWires.some(
+          (w) =>
+            (w.fromCompId === bestMatch!.compId && w.fromPinId === bestMatch!.pinId) ||
+            (w.toCompId === bestMatch!.compId && w.toPinId === bestMatch!.pinId),
+        );
+        if (!alreadyUsedPin || tPin.id === "GND" || tPin.id === "NEG") {
+          newWires.push({
+            id: `w_aw_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            fromCompId: target.id,
+            fromPinId: tPin.id,
+            toCompId: bestMatch.compId,
+            toPinId: bestMatch.pinId,
+            voltage: 0,
+            current: 0,
+          });
+        }
       }
     }
     wires = newWires;
