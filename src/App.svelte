@@ -225,28 +225,6 @@
   }
 
   function runAiPrompt() {
-    if (!aiPrompt.trim()) return;
-    pushHistory();
-    const res = buildCircuitFromPrompt(aiPrompt);
-    components = res.components;
-    wires = res.wires;
-    probeHistory = [];
-    selectedCompId = components[0]?.id ?? null;
-    for (let i = 0; i < 15; i++) {
-      stepCircuitPhysics(
-        components,
-        wires,
-        customChips,
-        simTime,
-        0.002,
-        stressConfig,
-        compiledArduino,
-      );
-    }
-    components = [...components];
-    wires = [...wires];
-    showToast(res.summary);
-    aiPrompt = "";
     aiReply = askAiTutor(aiMode, aiPrompt, components, wires);
     if (aiMode !== "explain") aiPrompt = "";
   }
@@ -1376,7 +1354,7 @@ endmodule`;
     if (comp.type === "LED" || comp.type === "DIODE" || comp.type === "ZENER" || comp.type === "BUZZER") {
       return (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.K ?? 0);
     }
-    if (comp.type === "SR_LATCH" || comp.type === "DFF") {
+    if (comp.type === "SR_LATCH") {
       return comp.pinVoltages.Q ?? 0;
     }
     if (comp.type === "COUNTER4" || comp.type === "SHIFT4") {
@@ -6126,8 +6104,10 @@ endmodule`;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
-    gap: 12px;
+    padding: 0 10px;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .banner-left,
@@ -6135,29 +6115,32 @@ endmodule`;
   .subpage-nav {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .brand-pill {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
-    padding: 5px 12px;
+    padding: 5px 10px;
     background-color: var(--bg-panel);
     border: 1.5px solid var(--ink);
     border-radius: 6px;
     cursor: pointer;
+    white-space: nowrap;
   }
 
   .subpage-btn {
-    padding: 7px 14px;
-    font-size: 15.5px;
+    padding: 6px 10px;
+    font-size: 15px;
     font-weight: 700;
     background-color: var(--bg-panel);
     border: 1px solid var(--peach-border);
     border-radius: 6px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
+    white-space: nowrap;
   }
 
   .subpage-btn.active {

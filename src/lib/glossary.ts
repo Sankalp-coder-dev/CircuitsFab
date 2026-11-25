@@ -117,10 +117,12 @@ export const GLOSSARY_INFO: Partial<Record<ComponentType, GlossaryEntry>> = {
   },
   NAND: {
     plain: 'Outputs 0 only when both inputs are 1. You can build any digital computer out of NAND gates.',
+    analogy: 'A security lock that only stays open unless both alarm keys are turned.',
     formulaHtml: 'Y = ¬(A · B)',
   },
   NOR: {
     plain: 'Outputs 1 only when both inputs are 0.',
+    analogy: 'A quiet-room indicator that lights up only when nobody is talking.',
     formulaHtml: 'Y = ¬(A + B)',
   },
   XOR: {
