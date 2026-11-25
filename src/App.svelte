@@ -1757,7 +1757,7 @@ endmodule`;
         setHover(
           e,
           "CircuitFab CIRCUIT & SILICON STUDIO",
-          "Desmos-style MNA Circuit Solver, FPGA LUT4 Synthesizer, Low-Level Compiler & Stress Chamber",
+          "Interactive MNA Circuit Solver, FPGA LUT4 Synthesizer, Low-Level Compiler & Stress Chamber",
           "MNA Circuit Solver, FPGA LUT4 Synthesizer, Low-Level Compiler & Stress Chamber",
         )}
       on:mousemove={moveHover}
