@@ -53,7 +53,11 @@
     loadCircuitFromLocalStorage,
     saveCircuitToLocalStorage,
   } from "./lib/exportUtils.ts";
-  import { askAiTutorAsync, type AiMode, type AiTutorResponse } from "./lib/aiAssistant.ts";
+  import {
+    askAiTutorAsync,
+    type AiMode,
+    type AiTutorResponse,
+  } from "./lib/aiAssistant.ts";
 
   const GRID = 28;
 
@@ -314,7 +318,8 @@
     tutorialCompleted = false;
     activePresetId = preset.id;
     stressConfig.burnoutEnabled = false;
-    stressConfig.burnoutEnabled = (stressConfig.physicsMode ?? "realistic") === "realistic";
+    stressConfig.burnoutEnabled =
+      (stressConfig.physicsMode ?? "realistic") === "realistic";
     components = preset.components.map((c) => ({
       ...c,
       blown: false,
@@ -352,7 +357,8 @@
     tutorialStepIdx = 0;
     tutorialCompleted = false;
     stressConfig.burnoutEnabled = false;
-    stressConfig.burnoutEnabled = (stressConfig.physicsMode ?? "realistic") === "realistic";
+    stressConfig.burnoutEnabled =
+      (stressConfig.physicsMode ?? "realistic") === "realistic";
     stressConfig.voltageSurge = 1.0;
     components = tut.initialComponents.map((c) => ({
       ...c,
@@ -578,8 +584,10 @@
       if (bestMatch) {
         const alreadyUsedPin = newWires.some(
           (w) =>
-            (w.fromCompId === bestMatch!.compId && w.fromPinId === bestMatch!.pinId) ||
-            (w.toCompId === bestMatch!.compId && w.toPinId === bestMatch!.pinId),
+            (w.fromCompId === bestMatch!.compId &&
+              w.fromPinId === bestMatch!.pinId) ||
+            (w.toCompId === bestMatch!.compId &&
+              w.toPinId === bestMatch!.pinId),
         );
         if (!alreadyUsedPin || tPin.id === "GND" || tPin.id === "NEG") {
           newWires.push({
@@ -781,7 +789,9 @@ void loop() {
       const i3Nets = connectedNames(fpga.id, "I3");
       const y0Nets = connectedNames(fpga.id, "Y0");
       const y1Nets = connectedNames(fpga.id, "Y1");
-      const prof = FPGA_PROFILES[fpga.fpgaProfile ?? "FULL-ADD"] ?? FPGA_PROFILES["FULL-ADD"];
+      const prof =
+        FPGA_PROFILES[fpga.fpgaProfile ?? "FULL-ADD"] ??
+        FPGA_PROFILES["FULL-ADD"];
 
       verilogSourceCode = `// Auto-Generated Verilog HDL from Live Workspace (${components.length} parts, ${wires.length} wires)
 // Active FPGA Profile: ${fpga.fpgaProfile ?? "CUSTOM"} (LUT0=0x${(fpga.fpgaLutY0 ?? prof.lutY0).toString(16).toUpperCase()}, LUT1=0x${(fpga.fpgaLutY1 ?? prof.lutY1).toString(16).toUpperCase()})
@@ -1363,13 +1373,23 @@ endmodule`;
         0
       );
     }
-    if (comp.type === "C" || comp.type === "R" || comp.type === "L" || comp.type === "FUSE") {
+    if (
+      comp.type === "C" ||
+      comp.type === "R" ||
+      comp.type === "L" ||
+      comp.type === "FUSE"
+    ) {
       return (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.B ?? 0);
     }
     if (comp.type === "POT") {
       return comp.pinVoltages.W ?? 0;
     }
-    if (comp.type === "LED" || comp.type === "DIODE" || comp.type === "ZENER" || comp.type === "BUZZER") {
+    if (
+      comp.type === "LED" ||
+      comp.type === "DIODE" ||
+      comp.type === "ZENER" ||
+      comp.type === "BUZZER"
+    ) {
       return (comp.pinVoltages.A ?? 0) - (comp.pinVoltages.K ?? 0);
     }
     if (comp.type === "SR_LATCH") {
@@ -1684,7 +1704,9 @@ endmodule`;
   $: activeFpgaComp = components.find((c) => c.type === "FPGA") ?? null;
   $: activeArduinoComp = components.find((c) => c.type === "ARDUINO") ?? null;
   $: blownCount = components.filter((c) => c.blown).length;
-  $: overloadCount = components.filter((c) => !c.blown && c.failureReason).length;
+  $: overloadCount = components.filter(
+    (c) => !c.blown && c.failureReason,
+  ).length;
   $: selectedComp = components.find((c) => c.id === selectedCompId) ?? null;
 </script>
 
@@ -1820,10 +1842,14 @@ endmodule`;
 
       <button
         class="subpage-btn"
-        class:active={activeSubpage === 'about'}
-        on:click={() => (activeSubpage = 'about')}
+        class:active={activeSubpage === "about"}
+        on:click={() => (activeSubpage = "about")}
         on:mouseenter={(e) =>
-          setHover(e, 'ABOUT CIRCUITFAB', 'What this site is and how it helps you learn electronics')}
+          setHover(
+            e,
+            "ABOUT CIRCUITFAB",
+            "What this site is and how it helps you learn electronics",
+          )}
         on:mousemove={moveHover}
         on:mouseleave={clearHover}
       >
@@ -2311,10 +2337,31 @@ endmodule`;
                   stroke="#1F2328"
                   stroke-width="1.6"
                 />
-                <circle cx="0" cy="0" r="6" fill="#FACC15" stroke="#1F2328" stroke-width="1.4" />
-                <line x1="0" y1="0" x2="4" y2="-4" stroke="#1F2328" stroke-width="1.8" />
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="6"
+                  fill="#FACC15"
+                  stroke="#1F2328"
+                  stroke-width="1.4"
+                />
+                <line
+                  x1="0"
+                  y1="0"
+                  x2="4"
+                  y2="-4"
+                  stroke="#1F2328"
+                  stroke-width="1.8"
+                />
               {:else if item.type === "FUSE"}
-                <line x1="-22" y1="0" x2="22" y2="0" stroke="#1F2328" stroke-width="2" />
+                <line
+                  x1="-22"
+                  y1="0"
+                  x2="22"
+                  y2="0"
+                  stroke="#1F2328"
+                  stroke-width="2"
+                />
                 <rect
                   x="-12"
                   y="-6"
@@ -2325,9 +2372,21 @@ endmodule`;
                   stroke="#1F2328"
                   stroke-width="1.6"
                 />
-                <path d="M-8 0 Q-4 -4 0 0 Q4 4 8 0" fill="none" stroke="#C74440" stroke-width="1.8" />
+                <path
+                  d="M-8 0 Q-4 -4 0 0 Q4 4 8 0"
+                  fill="none"
+                  stroke="#C74440"
+                  stroke-width="1.8"
+                />
               {:else if item.type === "BUZZER"}
-                <circle cx="0" cy="0" r="11" fill="#24292F" stroke="#1F2328" stroke-width="1.6" />
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="11"
+                  fill="#24292F"
+                  stroke="#1F2328"
+                  stroke-width="1.6"
+                />
                 <circle cx="0" cy="0" r="3.5" fill="#FA7E19" />
               {:else if item.type === "NPN" || item.type === "PNP" || item.type === "NMOS"}
                 <line
@@ -2489,8 +2548,21 @@ endmodule`;
                   stroke="#1F2328"
                   stroke-width="1.8"
                 />
-                <text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#1F2328">
-                  {item.type === "COUNTER4" ? "CNT" : item.type === "SHIFT4" ? "SR4" : item.type === "SR_LATCH" ? "S/R" : "DFF"}
+                <text
+                  x="0"
+                  y="4"
+                  text-anchor="middle"
+                  font-size="10"
+                  font-weight="700"
+                  fill="#1F2328"
+                >
+                  {item.type === "COUNTER4"
+                    ? "CNT"
+                    : item.type === "SHIFT4"
+                      ? "SR4"
+                      : item.type === "SR_LATCH"
+                        ? "S/R"
+                        : "DFF"}
                 </text>
               {:else if item.type === "SEG7"}
                 <rect
@@ -2729,7 +2801,11 @@ endmodule`;
                 <div class="expr-equation">
                   <span class="expr-name">{comp.label}</span>
                   {#if comp.blown}
-                    <span class="blown-badge">{comp.failureReason ? comp.failureReason.split(" ")[0] : "BLOWN!"}</span>
+                    <span class="blown-badge"
+                      >{comp.failureReason
+                        ? comp.failureReason.split(" ")[0]
+                        : "BLOWN!"}</span
+                    >
                     <button
                       class="mini-repair-btn"
                       on:click|stopPropagation={() => repairComponent(comp.id)}
@@ -2771,9 +2847,8 @@ endmodule`;
                     >
                   {:else if comp.type === "COUNTER4" || comp.type === "SHIFT4"}
                     <span class="expr-val"
-                      >= {(comp.state?.cnt ?? 0)
-                        .toString(2)
-                        .padStart(4, "0")} ({comp.state?.cnt ?? 0})</span
+                      >= {(comp.state?.cnt ?? 0).toString(2).padStart(4, "0")} ({comp
+                        .state?.cnt ?? 0})</span
                     >
                   {:else if comp.type !== "GND" && comp.type !== "CUSTOM_IC"}
                     <span class="expr-val"
@@ -2853,7 +2928,8 @@ endmodule`;
               {#if cat.param2Label && comp.param2 !== undefined}
                 <div class="slider-wrap secondary-row">
                   <span class="param2-label"
-                    >{cat.param2Label}: {comp.param2}{cat.param2Label === "DUTY" || cat.param2Label === "WIPER"
+                    >{cat.param2Label}: {comp.param2}{cat.param2Label ===
+                      "DUTY" || cat.param2Label === "WIPER"
                       ? "%"
                       : "Hz"}</span
                   >
@@ -3800,7 +3876,11 @@ endmodule`;
                         />
                         <polygon
                           points="-14,-14 -14,14 14,0"
-                          fill={isLit ? "#EF4444" : comp.type === "ZENER" ? "#FEF3C7" : "#FFFFFF"}
+                          fill={isLit
+                            ? "#EF4444"
+                            : comp.type === "ZENER"
+                              ? "#FEF3C7"
+                              : "#FFFFFF"}
                           stroke="#1F2328"
                           stroke-width="2.5"
                         />
@@ -3854,32 +3934,153 @@ endmodule`;
                         fill="#2D70B3">−</text
                       >
                     {:else if comp.type === "POT"}
-                      <line x1={-GRID * 2} y1={-GRID} x2="-18" y2={-GRID} stroke="#1F2328" stroke-width="2.5" />
-                      <line x1={-GRID * 2} y1={GRID} x2="-18" y2={GRID} stroke="#1F2328" stroke-width="2.5" />
-                      <line x1="18" y1="0" x2={GRID * 2} y2="0" stroke="#1F2328" stroke-width="2.5" />
-                      <rect x="-18" y="-30" width="36" height="60" rx="6" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.5" />
-                      <path d="M0 -22 L-8 -14 L8 -6 L-8 2 L8 10 L-8 18 L0 22" fill="none" stroke="#1F2328" stroke-width="2.3" />
-                      <line x1="18" y1="0" x2="6" y2="0" stroke="#FA7E19" stroke-width="2.6" />
+                      <line
+                        x1={-GRID * 2}
+                        y1={-GRID}
+                        x2="-18"
+                        y2={-GRID}
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <line
+                        x1={-GRID * 2}
+                        y1={GRID}
+                        x2="-18"
+                        y2={GRID}
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <line
+                        x1="18"
+                        y1="0"
+                        x2={GRID * 2}
+                        y2="0"
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <rect
+                        x="-18"
+                        y="-30"
+                        width="36"
+                        height="60"
+                        rx="6"
+                        fill="#FFFFFF"
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <path
+                        d="M0 -22 L-8 -14 L8 -6 L-8 2 L8 10 L-8 18 L0 22"
+                        fill="none"
+                        stroke="#1F2328"
+                        stroke-width="2.3"
+                      />
+                      <line
+                        x1="18"
+                        y1="0"
+                        x2="6"
+                        y2="0"
+                        stroke="#FA7E19"
+                        stroke-width="2.6"
+                      />
                       <polygon points="4,0 11,-5 11,5" fill="#FA7E19" />
                     {:else if comp.type === "FUSE"}
-                      <line x1={-GRID * 2} y1="0" x2="-22" y2="0" stroke="#1F2328" stroke-width="2.5" />
-                      <line x1="22" y1="0" x2={GRID * 2} y2="0" stroke="#1F2328" stroke-width="2.5" />
-                      <rect x="-22" y="-12" width="44" height="24" rx="4" fill={comp.blown ? "#FEE2E2" : "#E0F2FE"} stroke="#1F2328" stroke-width="2.4" />
+                      <line
+                        x1={-GRID * 2}
+                        y1="0"
+                        x2="-22"
+                        y2="0"
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <line
+                        x1="22"
+                        y1="0"
+                        x2={GRID * 2}
+                        y2="0"
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <rect
+                        x="-22"
+                        y="-12"
+                        width="44"
+                        height="24"
+                        rx="4"
+                        fill={comp.blown ? "#FEE2E2" : "#E0F2FE"}
+                        stroke="#1F2328"
+                        stroke-width="2.4"
+                      />
                       {#if !comp.blown}
-                        <path d="M-16 0 C-8 -10 0 -10 0 0 C0 10 8 10 16 0" fill="none" stroke="#C74440" stroke-width="2.4" />
+                        <path
+                          d="M-16 0 C-8 -10 0 -10 0 0 C0 10 8 10 16 0"
+                          fill="none"
+                          stroke="#C74440"
+                          stroke-width="2.4"
+                        />
                       {:else}
-                        <line x1="-16" y1="0" x2="-5" y2="-4" stroke="#C74440" stroke-width="2.4" />
-                        <line x1="5" y1="4" x2="16" y2="0" stroke="#C74440" stroke-width="2.4" />
+                        <line
+                          x1="-16"
+                          y1="0"
+                          x2="-5"
+                          y2="-4"
+                          stroke="#C74440"
+                          stroke-width="2.4"
+                        />
+                        <line
+                          x1="5"
+                          y1="4"
+                          x2="16"
+                          y2="0"
+                          stroke="#C74440"
+                          stroke-width="2.4"
+                        />
                       {/if}
                     {:else if comp.type === "BUZZER"}
-                      {@const isBuzzing = !comp.blown && (comp.state?.buzzing ?? 0) > 0}
-                      <line x1={-GRID * 2} y1="0" x2="-22" y2="0" stroke="#1F2328" stroke-width="2.5" />
-                      <line x1="22" y1="0" x2={GRID * 2} y2="0" stroke="#1F2328" stroke-width="2.5" />
-                      <circle cx="0" cy="0" r="22" fill={isBuzzing ? "#FEF3C7" : "#24292F"} stroke="#1F2328" stroke-width="2.5" />
-                      <circle cx="0" cy="0" r="7" fill={isBuzzing ? "#FA7E19" : "#57606A"} />
+                      {@const isBuzzing =
+                        !comp.blown && (comp.state?.buzzing ?? 0) > 0}
+                      <line
+                        x1={-GRID * 2}
+                        y1="0"
+                        x2="-22"
+                        y2="0"
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <line
+                        x1="22"
+                        y1="0"
+                        x2={GRID * 2}
+                        y2="0"
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r="22"
+                        fill={isBuzzing ? "#FEF3C7" : "#24292F"}
+                        stroke="#1F2328"
+                        stroke-width="2.5"
+                      />
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r="7"
+                        fill={isBuzzing ? "#FA7E19" : "#57606A"}
+                      />
                       {#if isBuzzing}
-                        <path d="M-14 -26 Q0 -34 14 -26" fill="none" stroke="#FA7E19" stroke-width="2.4" />
-                        <path d="M-20 -32 Q0 -42 20 -32" fill="none" stroke="#FA7E19" stroke-width="2" />
+                        <path
+                          d="M-14 -26 Q0 -34 14 -26"
+                          fill="none"
+                          stroke="#FA7E19"
+                          stroke-width="2.4"
+                        />
+                        <path
+                          d="M-20 -32 Q0 -42 20 -32"
+                          fill="none"
+                          stroke="#FA7E19"
+                          stroke-width="2"
+                        />
                       {/if}
                     {:else if comp.type === "NPN" || comp.type === "PNP"}
                       {#if physicalDrawingMode}
@@ -4344,7 +4545,8 @@ endmodule`;
                         y={-GRID + 5}
                         font-size="15"
                         font-weight="700"
-                        fill="#1F2328">{comp.type === "SR_LATCH" ? "S" : "D"}</text
+                        fill="#1F2328"
+                        >{comp.type === "SR_LATCH" ? "S" : "D"}</text
                       >
                       {#if comp.type === "SR_LATCH"}
                         <text
@@ -4400,7 +4602,8 @@ endmodule`;
                         font-weight="700"
                         fill="#56D364"
                       >
-                        {(comp.state?.cnt ?? 0).toString(2).padStart(4, "0")} ({comp.state?.cnt ?? 0})
+                        {(comp.state?.cnt ?? 0).toString(2).padStart(4, "0")} ({comp
+                          .state?.cnt ?? 0})
                       </text>
                     {:else if comp.type === "SEG7"}
                       {@const segs =
@@ -4844,21 +5047,39 @@ endmodule`;
             <div class="ai-reply-card">
               <div class="ai-reply-top">
                 <strong>{aiReply.title}</strong>
-                <button class="icon-action" on:click={() => (aiReply = null)}>✕</button>
+                <button class="icon-action" on:click={() => (aiReply = null)}
+                  >✕</button
+                >
               </div>
               <p class="ai-reply-body">{aiReply.body}</p>
             </div>
           {/if}
           <form class="ai-bar" on:submit|preventDefault={runAiPrompt}>
             <div class="ai-modes">
-              <button type="button" class:active={aiMode === 'explain'} on:click={() => (aiMode = 'explain')}>EXPLAIN</button>
-              <button type="button" class:active={aiMode === 'brainstorm'} on:click={() => (aiMode = 'brainstorm')}>IDEAS</button>
-              <button type="button" class:active={aiMode === 'parts'} on:click={() => (aiMode = 'parts')}>PARTS</button>
+              <button
+                type="button"
+                class:active={aiMode === "explain"}
+                on:click={() => (aiMode = "explain")}>EXPLAIN</button
+              >
+              <button
+                type="button"
+                class:active={aiMode === "brainstorm"}
+                on:click={() => (aiMode = "brainstorm")}>IDEAS</button
+              >
+              <button
+                type="button"
+                class:active={aiMode === "parts"}
+                on:click={() => (aiMode = "parts")}>PARTS</button
+              >
             </div>
             <input
               type="text"
               bind:value={aiPrompt}
-              placeholder={aiMode === 'explain' ? 'Ask how your circuit works...' : aiMode === 'brainstorm' ? 'Brainstorm a project idea...' : 'Ask what a part does (e.g. FPGA, NPN)...'}
+              placeholder={aiMode === "explain"
+                ? "Ask how your circuit works..."
+                : aiMode === "brainstorm"
+                  ? "Brainstorm a project idea..."
+                  : "Ask what a part does (e.g. FPGA, NPN)..."}
             />
             <button type="submit" class="ai-ask-btn">ASK</button>
           </form>
@@ -4974,20 +5195,27 @@ endmodule`;
                 </span>
               {/each}
             </div>
-          <div style="display:flex;gap:4px;align-items:center;">
-            <button
-              class="mini-pill"
-              on:click={() => (simSpeed = simSpeed === 1 ? 0.5 : simSpeed === 0.5 ? 0.25 : 1)}
-              on:mouseenter={(e) => setHover(e, 'TIMEBASE SPEED', 'Cycle oscilloscope & simulation speed (1x, 0.5x, 0.25x)')}
-              on:mousemove={moveHover}
-              on:mouseleave={clearHover}
-            >
-              {simSpeed}x
-            </button>
-            <button class="icon-action" on:click={() => (probeHistory = [])}
-              >↺</button
-            >
-          </div>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <button
+                class="mini-pill"
+                on:click={() =>
+                  (simSpeed =
+                    simSpeed === 1 ? 0.5 : simSpeed === 0.5 ? 0.25 : 1)}
+                on:mouseenter={(e) =>
+                  setHover(
+                    e,
+                    "TIMEBASE SPEED",
+                    "Cycle oscilloscope & simulation speed (1x, 0.5x, 0.25x)",
+                  )}
+                on:mousemove={moveHover}
+                on:mouseleave={clearHover}
+              >
+                {simSpeed}x
+              </button>
+              <button class="icon-action" on:click={() => (probeHistory = [])}
+                >↺</button
+              >
+            </div>
           </div>
           <canvas bind:this={scopeCanvas} width="320" height="135"></canvas>
         </div>
@@ -5632,18 +5860,18 @@ endmodule`;
           </button>
         </div>
 
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button
-              class="action-pill fpga-pill"
-              on:click={syncWorkspaceToIdeCode}
-              title="Inspect live circuit netlist and generate matching AVR C or Verilog HDL code"
-            >
-              SYNC FROM WORKSPACE
-            </button>
-            <button class="action-pill ic-pill" on:click={runIdeCompiler}>
-              ▶ COMPILE & FLASH
-            </button>
-          </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button
+            class="action-pill fpga-pill"
+            on:click={syncWorkspaceToIdeCode}
+            title="Inspect live circuit netlist and generate matching AVR C or Verilog HDL code"
+          >
+            SYNC FROM WORKSPACE
+          </button>
+          <button class="action-pill ic-pill" on:click={runIdeCompiler}>
+            ▶ COMPILE & FLASH
+          </button>
+        </div>
       </div>
 
       {#if ideTarget === "avr"}
@@ -5768,7 +5996,8 @@ endmodule`;
       <div class="physics-mode-row">
         <button
           class="prof-btn"
-          class:active={(stressConfig.physicsMode ?? "realistic") === "realistic"}
+          class:active={(stressConfig.physicsMode ?? "realistic") ===
+            "realistic"}
           on:click={() => setPhysicsMode("realistic")}
         >
           REALISTIC (EXACT + BURNOUT)
@@ -5926,7 +6155,9 @@ endmodule`;
               {:else if comp.failureReason}
                 <span class="overload-badge">{comp.failureReason}</span>
               {:else}
-                <span class="stress-pct">{pct}% LOAD · {formatElec(comp.branchCurrent, "A")}</span>
+                <span class="stress-pct"
+                  >{pct}% LOAD · {formatElec(comp.branchCurrent, "A")}</span
+                >
               {/if}
             </div>
             <div class="stress-bar-bg">
@@ -6045,7 +6276,10 @@ endmodule`;
           <p class="glossary-desc">{item.tooltipPhysics}</p>
           <p class="glossary-desc">{gInfo?.plain ?? item.tooltipPhysics}</p>
           {#if gInfo?.analogy}
-            <p class="glossary-analogy"><strong>Analogy:</strong> {gInfo.analogy}</p>
+            <p class="glossary-analogy">
+              <strong>Analogy:</strong>
+              {gInfo.analogy}
+            </p>
           {/if}
           {#if gInfo?.formulaHtml}
             <div class="math-pill">{@html gInfo.formulaHtml}</div>
@@ -6063,29 +6297,52 @@ endmodule`;
   </main>
 {/if}
 
-
 <!-- =========================================================================
      SUBPAGE 6: ABOUT (Plain, Human-Readable)
      ========================================================================= -->
-{#if activeSubpage === 'about'}
+{#if activeSubpage === "about"}
   <main class="about-page">
     <section class="about-card">
       <h1>About CircuitFab</h1>
       <p>
-        CircuitFab is a browser-based electronics lab built for students, hobbyists, and anyone curious about how hardware works.
-        You can drop parts onto a grid, wire them together, and watch real physics update voltages, currents, and waveforms right away.
+        CircuitFab is a browser-based electronics lab built for students,
+        hobbyists, and anyone curious about how hardware works. You can drop
+        parts onto a grid, wire them together, and watch real physics update
+        voltages, currents, and waveforms right away.
       </p>
       <p>
-        Most circuit tools split analog electronics, microcontrollers, and FPGAs into separate apps. CircuitFab puts them on one board:
-        you can wire resistors, capacitors, LEDs, and transistors alongside an Arduino Uno, a 555 timer, or a programmable FPGA Look-Up Table,
-        then flip into 3D to inspect the board or test what breaks in the Stress Lab.
+        Most circuit tools split analog electronics, microcontrollers, and FPGAs
+        into separate apps. CircuitFab puts them on one board: you can wire
+        resistors, capacitors, LEDs, and transistors alongside an Arduino Uno, a
+        555 timer, or a programmable FPGA Look-Up Table, then flip into 3D to
+        inspect the board or test what breaks in the Stress Lab.
       </p>
       <p>
-        <strong>Primary use:</strong> learning electronics by experimenting—without needing to buy parts, install heavy desktop software, or worry about burning out real components.
+        <strong>How FPGA development works here:</strong> An FPGA (Field-Programmable Gate Array) lets you build real digital hardware instead of running software line by line. In CircuitFab, the FPGA block is a 4-input Look-Up Table (<strong>LUT4</strong>) with inputs <code>I0–I3</code> and outputs <code>Y0, Y1</code>. You can edit its 16-row truth table in <strong>FPGA &amp; CHIP</strong> or write Verilog HDL in <strong>CODE IDE</strong> and watch it drive 7-segment displays and flip-flops live.
+      </p>
+      <p>
+        <strong>Primary use:</strong> learning electronics by experimenting—without
+        needing to buy parts, install heavy desktop software, or worry about burning
+        out real components.
       </p>
       <div class="about-actions">
-        <button class="action-pill fpga-pill" on:click={() => (activeSubpage = 'circuit')}>OPEN CIRCUIT BOARD</button>
-        <button class="action-pill ic-pill" on:click={() => (activeSubpage = 'glossary')}>READ GLOSSARY</button>
+        <button
+          class="action-pill fpga-pill"
+          on:click={() => (activeSubpage = "circuit")}
+          >OPEN CIRCUIT BOARD</button
+        >
+        <button
+          class="action-pill ic-pill"
+          on:click={() => {
+            loadPresetById("fpga-adder");
+            activeSubpage = "circuit";
+          }}
+          >TRY INTERACTIVE FPGA DEMO →</button
+        >
+        <button
+          class="action-pill ic-pill"
+          on:click={() => (activeSubpage = "glossary")}>READ GLOSSARY</button
+        >
       </div>
     </section>
   </main>
@@ -7314,7 +7571,6 @@ endmodule`;
     font-weight: 700;
   }
 
-
   .ai-modes {
     display: flex;
     gap: 3px;
@@ -7380,7 +7636,7 @@ endmodule`;
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
-    background-color: #F0F2F5;
+    background-color: #f0f2f5;
   }
 
   .about-page {

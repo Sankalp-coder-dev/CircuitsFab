@@ -10,10 +10,12 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const hfToken = process.env.HF_TOKEN;
+  const geminiKey = process.env.GEMINI_API_KEY;
+
+  if (!hfToken && !geminiKey) {
     return new Response(
-      JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
+      JSON.stringify({ error: 'No LLM API key configured (set HF_TOKEN for Hugging Face Llama 3 or GEMINI_API_KEY)' }),
       { status: 501, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -30,7 +32,7 @@ You are grounded in CircuitFab's exact physics engine and component catalog:
 - 0.25W 1/4W resistors, 16V electrolytic capacitors, 5.1V Zener diodes, 3-pin potentiometers, resettable fuses, piezo buzzers, SR latches, 4-bit counters, and shift registers.
 
 Mode: ${mode || 'explain'}
-- If mode is "explain": Explain how the user's LIVE circuit works using the exact voltages, currents, power, and wiring netlist provided below. Diagnose any blown/overloaded or unwired parts. Never invent components that aren't on the board.
+- If mode is "explain": Explain how the user's LIVE circuit works using the exact voltages, currents, power, and wiring netlist provided below. Diagnose any blown/overloaded or unwired parts. If the user just says "hi" or greets you, greet them warmly and give a 1-2 sentence overview of what's on their board.
 - If mode is "brainstorm": Suggest 2-3 creative, practical projects tailored to the parts currently on the user's board.
 - If mode is "parts": Thoroughly explain the requested component's physics, pinout, ratings, and how any instances on the board are behaving.
 
@@ -39,44 +41,76 @@ Keep your answer clear, educational, accurate, and concise (under 180 words). Do
 LIVE WORKSPACE STATE:
 ${workspaceContext || 'Empty workspace'}`;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
+    // Prefer Hugging Face Llama 3 if HF_TOKEN is configured
+    if (hfToken) {
+      const hfRes = await fetch('https://router.huggingface.co/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${hfToken}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemInstruction }] },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` }],
-            },
+          model: 'meta-llama/Llama-3.1-8B-Instruct',
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` },
           ],
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 400,
-          },
+          temperature: 0.4,
+          max_tokens: 400,
         }),
-      }
-    );
+      });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      return new Response(
-        JSON.stringify({ error: `Gemini API error: ${geminiRes.status}`, detail: errText }),
-        { status: 502, headers: { 'Content-Type': 'application/json' } }
-      );
+      if (hfRes.ok) {
+        const hfData = await hfRes.json();
+        const replyText = hfData?.choices?.[0]?.message?.content?.trim();
+        if (replyText) {
+          return new Response(JSON.stringify({ reply: replyText, provider: 'llama3' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
     }
 
-    const data = await geminiRes.json();
-    const replyText =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
-      'No response generated.';
+    // Fallback to Gemini 2.5 Flash if GEMINI_API_KEY is configured
+    if (geminiKey) {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemInstruction }] },
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.4,
+              maxOutputTokens: 400,
+            },
+          }),
+        }
+      );
 
-    return new Response(JSON.stringify({ reply: replyText }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+      if (geminiRes.ok) {
+        const data = await geminiRes.json();
+        const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (replyText) {
+          return new Response(JSON.stringify({ reply: replyText, provider: 'gemini' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ error: 'Upstream LLM provider returned an error' }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (err) {
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),

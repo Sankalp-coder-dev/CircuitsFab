@@ -285,6 +285,18 @@ export function askAiTutor(
   }
 
   // Mode: 'explain' — Thorough, workspace-aware electrical engineering analysis
+  if (/^(hi|hello|hey|yo|sup|greetings)\b/.test(q)) {
+    const names = components.map((c) => c.label).join(', ');
+    return {
+      mode,
+      title: 'CircuitFab AI Tutor',
+      body:
+        components.length > 0
+          ? `Hi! I can see ${components.length} part(s) on your board (${names}). Ask me how your circuit works, why a part blew, or switch to IDEAS / PARTS mode to explore.`
+          : 'Hi! Your board is empty right now. Load a preset from the top bar, or drop a VDC, Resistor, LED, and GND to start—then ask me anything!',
+    };
+  }
+
   const ws = analyzeWorkspace();
 
   if (q.includes('blow') || q.includes('burn') || q.includes('repair') || q.includes('overload') || q.includes('why')) {
