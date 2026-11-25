@@ -734,6 +734,29 @@
       };
     });
 
+    // Run a quick physics check: if the circuit is still unfixable (e.g. direct short or LED with no resistor),
+    // automatically restart the active preset so the user isn't stuck in a blowout loop!
+    const testComps = structuredClone(components);
+    const testWires = structuredClone(wires);
+    const checkStress: StressConfig = { ...stressConfig, repairGraceUntil: undefined };
+    for (let i = 0; i < 10; i++) {
+      stepCircuitPhysics(
+        testComps,
+        testWires,
+        customChips,
+        simTime + i * 0.002,
+        0.002,
+        checkStress,
+        compiledArduino,
+      );
+    }
+    const stillUnfixable = testComps.some((c) => c.blown || (c.stressRatio ?? 0) > 1.15);
+    if (stillUnfixable) {
+      loadPresetById(activePresetId);
+      showToast("Unfixable short/overload — restarted circuit");
+      return;
+    }
+
     showToast(
       upgradedResistors > 0
         ? `Repaired all parts & upgraded ${upgradedResistors} overloaded resistor(s) to safe 220Ω`
