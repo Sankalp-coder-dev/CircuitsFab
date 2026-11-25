@@ -1872,9 +1872,9 @@ endmodule`;
       on:mousemove={moveHover}
       on:mouseleave={clearHover}
     >
-      <option value="realistic">PHYSICS: REALISTIC</option>
-      <option value="limited">PHYSICS: LIMITED BURNOUT</option>
-      <option value="sandbox">PHYSICS: SANDBOX (IDEAL)</option>
+      <option value="realistic">REALISTIC</option>
+      <option value="limited">LIMITED</option>
+      <option value="sandbox">SANDBOX</option>
     </select>
 
     <select
@@ -6373,14 +6373,14 @@ endmodule`;
 <style>
   /* UNCLUTTERED PEACH BANNER */
   .peach-banner {
-    height: 54px;
+    height: 50px;
     background-color: var(--peach-banner);
     border-bottom: 1px solid var(--peach-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 10px;
-    gap: 8px;
+    padding: 0 8px;
+    gap: 6px;
     overflow-x: auto;
     overflow-y: hidden;
   }
@@ -6390,14 +6390,14 @@ endmodule`;
   .subpage-nav {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
   }
 
   .brand-pill {
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
-    padding: 5px 10px;
+    padding: 4px 8px;
     background-color: var(--bg-panel);
     border: 1.5px solid var(--ink);
     border-radius: 6px;
@@ -6406,15 +6406,15 @@ endmodule`;
   }
 
   .subpage-btn {
-    padding: 6px 10px;
-    font-size: 15px;
+    padding: 5px 8px;
+    font-size: 14px;
     font-weight: 700;
     background-color: var(--bg-panel);
     border: 1px solid var(--peach-border);
     border-radius: 6px;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     white-space: nowrap;
   }
 
@@ -6444,8 +6444,8 @@ endmodule`;
   }
 
   .preset-select {
-    padding: 6px 10px;
-    font-size: 15px;
+    padding: 4px 6px;
+    font-size: 14px;
     font-weight: 700;
     border: 1px solid var(--peach-border);
     border-radius: 6px;
@@ -6453,13 +6453,14 @@ endmodule`;
   }
 
   .repair-pill {
-    padding: 6px 12px;
-    font-size: 15px;
+    padding: 4px 8px;
+    font-size: 14px;
     font-weight: 700;
     background-color: var(--red);
     color: #ffffff;
     border: none;
     border-radius: 6px;
+    white-space: nowrap;
   }
 
   .action-pill {
@@ -6480,13 +6481,14 @@ endmodule`;
   }
 
   .ctrl-btn {
-    min-width: 36px;
-    height: 36px;
-    padding: 0 10px;
-    font-size: 15px;
+    min-width: 30px;
+    height: 32px;
+    padding: 0 7px;
+    font-size: 14px;
     font-weight: 700;
     background-color: var(--bg-panel);
     border: 1px solid var(--peach-border);
+    white-space: nowrap;
   }
 
   .ctrl-btn.active {
