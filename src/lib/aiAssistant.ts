@@ -8,6 +8,60 @@ export interface AiTutorResponse {
   mode: AiMode;
   title: string;
   body: string;
+  source?: 'llm' | 'local';
+}
+
+export function buildWorkspaceContext(
+  components: CircuitComponent[],
+  wires: Wire[]
+): string {
+  if (components.length === 0) return 'Workspace is empty (0 components, 0 wires).';
+  const compLines = components.map((c) => {
+    const cat = getCatalogItem(c.type);
+    const pins = Object.entries(c.pinVoltages)
+      .map(([k, v]) => `${k}=${v.toFixed(2)}V`)
+      .join(', ');
+    const status = c.blown ? `BLOWN (${c.failureReason})` : c.failureReason ? `WARNING (${c.failureReason})` : 'OK';
+    return `- ${c.label} [${c.type}] val=${formatSI(c.value, cat.shortUnit)} I=${formatElec(c.branchCurrent, 'A')} P=${formatElec(c.power, 'W')} T=${(c.tempC ?? 25).toFixed(0)}C status=${status} pins={${pins}}`;
+  });
+  const wireLines = wires.map((w) => {
+    const c1 = components.find((c) => c.id === w.fromCompId)?.label ?? w.fromCompId;
+    const c2 = components.find((c) => c.id === w.toCompId)?.label ?? w.toCompId;
+    return `- ${c1}.${w.fromPinId} <-> ${c2}.${w.toPinId} (${formatElec(w.voltage, 'V')}, ${formatElec(w.current, 'A')})`;
+  });
+  return `Components (${components.length}):\n${compLines.join('\n')}\nWires (${wires.length}):\n${wireLines.join('\n')}`;
+}
+
+export async function askAiTutorAsync(
+  mode: AiMode,
+  prompt: string,
+  components: CircuitComponent[],
+  wires: Wire[] = []
+): Promise<AiTutorResponse> {
+  try {
+    const workspaceContext = buildWorkspaceContext(components, wires);
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, prompt, workspaceContext }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.reply) {
+        const title =
+          mode === 'explain'
+            ? 'CircuitFab AI (Gemini LLM)'
+            : mode === 'brainstorm'
+              ? 'Project Ideas (Gemini LLM)'
+              : 'Part Inspector (Gemini LLM)';
+        return { mode, title, body: data.reply, source: 'llm' };
+      }
+    }
+  } catch {
+    // Fallback to deterministic local workspace analyzer when offline or without GEMINI_API_KEY
+  }
+  const local = askAiTutor(mode, prompt, components, wires);
+  return { ...local, source: 'local' };
 }
 
 /**

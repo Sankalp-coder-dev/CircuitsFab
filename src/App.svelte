@@ -53,7 +53,7 @@
     loadCircuitFromLocalStorage,
     saveCircuitToLocalStorage,
   } from "./lib/exportUtils.ts";
-  import { askAiTutor, type AiMode, type AiTutorResponse } from "./lib/aiAssistant.ts";
+  import { askAiTutorAsync, type AiMode, type AiTutorResponse } from "./lib/aiAssistant.ts";
 
   const GRID = 28;
 
@@ -224,8 +224,19 @@
     showToast("Redo");
   }
 
-  function runAiPrompt() {
-    aiReply = askAiTutor(aiMode, aiPrompt, components, wires);
+  let aiLoading = false;
+
+  async function runAiPrompt() {
+    if (aiLoading) return;
+    aiLoading = true;
+    aiReply = {
+      mode: aiMode,
+      title: "CircuitFab AI",
+      body: "Analyzing your live circuit...",
+    };
+    const res = await askAiTutorAsync(aiMode, aiPrompt, components, wires);
+    aiReply = res;
+    aiLoading = false;
     if (aiMode !== "explain") aiPrompt = "";
   }
 
