@@ -47,9 +47,12 @@
     decodeCircuitFromHash,
     downloadTextFile,
     encodeCircuitToHash,
+    exportCircuitJson,
+    exportPcbStl,
     exportPngSchematic,
     exportSvgSchematic,
     generateSpiceNetlist,
+    importCircuitJson,
     loadCircuitFromLocalStorage,
     saveCircuitToLocalStorage,
   } from "./lib/exportUtils.ts";
@@ -207,7 +210,12 @@
       },
     ];
     undoStack = undoStack.slice(0, -1);
-    components = prev.components;
+    stressConfig.repairGraceUntil = simTime + 0.12;
+    components = prev.components.map((c) => ({
+      ...c,
+      blown: false,
+      failureReason: undefined,
+    }));
     wires = prev.wires;
     showToast("Undo");
   }
@@ -223,9 +231,35 @@
       },
     ];
     redoStack = redoStack.slice(0, -1);
+    stressConfig.repairGraceUntil = simTime + 0.12;
     components = next.components;
     wires = next.wires;
     showToast("Redo");
+  }
+
+  let importFileInput: HTMLInputElement;
+
+  function handleImportFile(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parsed = importCircuitJson(String(reader.result || ""));
+      if (!parsed) {
+        showToast("Invalid .circuitfab.json save file");
+        return;
+      }
+      pushHistory();
+      components = parsed.components;
+      wires = parsed.wires;
+      if (parsed.customChips.length > 0) customChips = parsed.customChips;
+      selectedCompId = components[0]?.id ?? null;
+      probeHistory = [];
+      showToast(`Imported ${file.name}`);
+    };
+    reader.readAsText(file);
+    input.value = "";
   }
 
   let aiLoading = false;
@@ -1107,6 +1141,7 @@ endmodule`;
           w.fromPinId === pinId),
     );
     if (!exists) {
+      pushHistory();
       wires = [
         ...wires,
         {
@@ -1970,6 +2005,29 @@ endmodule`;
           <button
             on:click={() => {
               downloadTextFile(
+                "circuit.circuitfab.json",
+                exportCircuitJson({ components, wires, customChips }),
+              );
+              showExportMenu = false;
+              showToast("Saved circuit.circuitfab.json");
+            }}>SAVE FILE (.json)</button
+          >
+          <button
+            on:click={() => {
+              importFileInput?.click();
+              showExportMenu = false;
+            }}>IMPORT FILE (.json)</button
+          >
+          <button
+            on:click={() => {
+              downloadTextFile("circuitfab_pcb.stl", exportPcbStl(components, GRID));
+              showExportMenu = false;
+              showToast("Exported 3D PCB (.stl)");
+            }}>3D MODEL (.stl)</button
+          >
+          <button
+            on:click={() => {
+              downloadTextFile(
                 "circuit.cir",
                 generateSpiceNetlist(components, wires, customChips),
               );
@@ -2008,6 +2066,13 @@ endmodule`;
         </div>
       {/if}
     </div>
+    <input
+      bind:this={importFileInput}
+      type="file"
+      accept=".json,.circuitfab.json"
+      style="display:none"
+      on:change={handleImportFile}
+    />
 
     <button
       class="ctrl-btn"

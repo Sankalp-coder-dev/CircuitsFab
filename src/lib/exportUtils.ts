@@ -221,3 +221,83 @@ export function exportPngSchematic(svgEl: SVGSVGElement, filename = 'circuit.png
   };
   img.src = url;
 }
+
+export function exportCircuitJson(data: {
+  components: CircuitComponent[];
+  wires: Wire[];
+  customChips: CustomChipDefinition[];
+}): string {
+  return JSON.stringify(
+    {
+      format: 'circuitfab-v1',
+      exportedAt: new Date().toISOString(),
+      components: data.components,
+      wires: data.wires,
+      customChips: data.customChips,
+    },
+    null,
+    2
+  );
+}
+
+export function importCircuitJson(raw: string): {
+  components: CircuitComponent[];
+  wires: Wire[];
+  customChips: CustomChipDefinition[];
+} | null {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.components) || !Array.isArray(parsed.wires)) return null;
+    return {
+      components: parsed.components,
+      wires: parsed.wires,
+      customChips: Array.isArray(parsed.customChips) ? parsed.customChips : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function exportPcbStl(components: CircuitComponent[], gridSize = 28): string {
+  const lines: string[] = ['solid circuitfab_pcb'];
+  const addTri = (a: number[], b: number[], c: number[]) => {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    lines.push(`  facet normal ${(nx / len).toFixed(4)} ${(ny / len).toFixed(4)} ${(nz / len).toFixed(4)}`);
+    lines.push('    outer loop');
+    lines.push(`      vertex ${a[0].toFixed(2)} ${a[1].toFixed(2)} ${a[2].toFixed(2)}`);
+    lines.push(`      vertex ${b[0].toFixed(2)} ${b[1].toFixed(2)} ${b[2].toFixed(2)}`);
+    lines.push(`      vertex ${c[0].toFixed(2)} ${c[1].toFixed(2)} ${c[2].toFixed(2)}`);
+    lines.push('    endloop');
+    lines.push('  endfacet');
+  };
+  const addBox = (cx: number, cy: number, z0: number, hx: number, hy: number, h: number) => {
+    const z1 = z0 + h;
+    const p = [
+      [cx - hx, cy - hy, z0], [cx + hx, cy - hy, z0], [cx + hx, cy + hy, z0], [cx - hx, cy + hy, z0],
+      [cx - hx, cy - hy, z1], [cx + hx, cy - hy, z1], [cx + hx, cy + hy, z1], [cx - hx, cy + hy, z1],
+    ];
+    addTri(p[0], p[2], p[1]); addTri(p[0], p[3], p[2]);
+    addTri(p[4], p[5], p[6]); addTri(p[4], p[6], p[7]);
+    addTri(p[0], p[1], p[5]); addTri(p[0], p[5], p[4]);
+    addTri(p[1], p[2], p[6]); addTri(p[1], p[6], p[5]);
+    addTri(p[2], p[3], p[7]); addTri(p[2], p[7], p[6]);
+    addTri(p[3], p[0], p[4]); addTri(p[3], p[4], p[7]);
+  };
+
+  addBox(350, 260, 0, 320, 220, 4);
+  for (const c of components) {
+    const cx = c.x * gridSize;
+    const cy = c.y * gridSize;
+    const hx = c.type === 'ARDUINO' ? 60 : c.type === 'FPGA' || c.type === 'IC555' ? 36 : 18;
+    const hy = c.type === 'ARDUINO' ? 42 : c.type === 'FPGA' || c.type === 'IC555' ? 36 : 14;
+    const h = c.type === 'LED' || c.type === 'C' ? 20 : 12;
+    addBox(cx, cy, 4, hx, hy, h);
+  }
+  lines.push('endsolid circuitfab_pcb');
+  return lines.join('\n');
+}
