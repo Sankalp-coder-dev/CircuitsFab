@@ -245,7 +245,7 @@ export const CATALOG: CatalogItem[] = [
     category: 'analog',
     defaultValue: 1.8,
     minVal: 1.6,
-    maxVal: 3.2,
+    maxVal: 3.4,
     stepVal: 0.1,
     maxPowerW: 0.065,
     maxCurrentA: 0.03, // 30mA continuous max (20mA nominal, >35mA blows)
