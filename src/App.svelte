@@ -7850,26 +7850,42 @@ endmodule`;
       right: 8px;
       bottom: 8px;
       padding: 4px 6px;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .ai-bar input {
+      min-width: 110px;
     }
 
     .ai-reply-card {
       width: calc(100% - 16px);
-      bottom: 56px;
+      bottom: 62px;
       max-height: 36vh;
       overflow-y: auto;
     }
 
     .zoom-controls {
-      bottom: 56px;
+      bottom: 62px;
       left: 8px;
     }
 
     .scope-card,
     .scope-card.over-2d {
-      width: min(230px, calc(100% - 110px));
-      bottom: 56px;
+      width: min(220px, calc(100% - 115px));
+      bottom: 62px;
       right: 8px;
       padding: 6px;
+      gap: 4px;
+    }
+
+    .scope-card canvas {
+      height: 76px;
+    }
+
+    .tut-dock-body {
+      flex-wrap: wrap;
+      gap: 6px;
     }
 
     .subpage-grid {
