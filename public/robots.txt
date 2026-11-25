@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://circuits-fab.vercel.app/sitemap.xml
