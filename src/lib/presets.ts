@@ -658,34 +658,32 @@ export const TUTORIALS: GuidedTutorial[] = [
   {
     id: 'tut-led',
     label: '1. LED BASICS',
-    tooltip: 'Build a complete 5V LED circuit from scratch and tune brightness with live sliders',
+    tooltip: 'Build a complete 5V Arduino Uno LED circuit from scratch and tune brightness',
     initialComponents: [
-      { id: 'V1', type: 'VDC', label: 'V1', x: 8, y: 10, rotation: 0, value: 5, color: '#2D70B3', pinVoltages: {}, branchCurrent: 0, power: 0 },
-      { id: 'R1', type: 'R', label: 'R1', x: 14, y: 7, rotation: 0, value: 330, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
-      { id: 'LED1', type: 'LED', label: 'LED1', x: 20, y: 7, rotation: 0, value: 1.8, color: '#C74440', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
-      { id: 'GND1', type: 'GND', label: 'GND', x: 14, y: 14, rotation: 0, value: 0, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'U1', type: 'ARDUINO', label: 'UNO', x: 8, y: 11, rotation: 0, value: 2.5, param2: 50, color: '#008184', pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'R1', type: 'R', label: 'R1', x: 16, y: 7, rotation: 0, value: 330, color: '#388C46', pinVoltages: {}, branchCurrent: 0, power: 0 },
+      { id: 'LED1', type: 'LED', label: 'LED1', x: 22, y: 7, rotation: 0, value: 1.8, color: '#C74440', probed: true, pinVoltages: {}, branchCurrent: 0, power: 0 },
     ],
     initialWires: [
-      { id: 'tw1', fromCompId: 'V1', fromPinId: 'NEG', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
-      { id: 'tw2', fromCompId: 'LED1', fromPinId: 'K', toCompId: 'GND1', toPinId: 'GND', voltage: 0, current: 0 },
+      { id: 'tw2', fromCompId: 'LED1', fromPinId: 'K', toCompId: 'U1', toPinId: 'GND', voltage: 0, current: 0 },
     ],
     steps: [
       {
-        badge: 'STEP 1/3: WIRE V1(+) → R1',
-        instruction: 'Click (or drag) from the top + pin of V1 to the left pin of resistor R1.',
-        targetCompId: 'V1',
-        targetPinId: 'POS',
+        badge: 'STEP 1/3: WIRE UNO(5V) → R1',
+        instruction: 'Click (or drag) from the 5V pin of UNO to the left pin of resistor R1.',
+        targetCompId: 'U1',
+        targetPinId: 'VCC',
         toCompId: 'R1',
         toPinId: 'A',
         check: (_c, wires) =>
           wires.some(
             (w) =>
-              (w.fromCompId === 'V1' && w.toCompId === 'R1') ||
-              (w.fromCompId === 'R1' && w.toCompId === 'V1')
+              (w.fromCompId === 'U1' && w.toCompId === 'R1') ||
+              (w.fromCompId === 'R1' && w.toCompId === 'U1')
           ),
         autoDo: (comps, wires) => ({
           components: comps,
-          wires: connectPins(wires, 'V1', 'POS', 'R1', 'A'),
+          wires: connectPins(wires, 'U1', 'VCC', 'R1', 'A'),
         }),
       },
       {
@@ -705,16 +703,16 @@ export const TUTORIALS: GuidedTutorial[] = [
         }),
       },
       {
-        badge: 'STEP 3/3: BOOST VOLTAGE V1 > 8V',
-        instruction: 'Drag the V1 slider in the left sidebar above 8V to make the LED shine brighter.',
-        targetCompId: 'V1',
+        badge: 'STEP 3/3: LOWER R1 TO 220Ω',
+        instruction: 'Drag the R1 slider in the left sidebar down to 220Ω to make the LED shine brighter safely.',
+        targetCompId: 'R1',
         check: (comps) => {
-          const v1 = comps.find((c) => c.id === 'V1');
+          const r1 = comps.find((c) => c.id === 'R1');
           const led = comps.find((c) => c.id === 'LED1');
-          return (v1?.value ?? 5) >= 8 && (led?.branchCurrent ?? 0) > 0.015;
+          return (r1?.value ?? 330) <= 240 && (led?.branchCurrent ?? 0) > 0.012;
         },
         autoDo: (comps, wires) => ({
-          components: comps.map((c) => (c.id === 'V1' ? { ...c, value: 9 } : c)),
+          components: comps.map((c) => (c.id === 'R1' ? { ...c, value: 220 } : c)),
           wires,
         }),
       },
