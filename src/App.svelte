@@ -1345,12 +1345,6 @@ endmodule`;
       mx = x1;
       my = y2;
     }
-    // If looping to a left-side GND pin from the right, route cleanly around the bottom-left
-    if ((w.toPinId === "GND" || w.fromPinId === "GND") && Math.abs(x1 - x2) > GRID * 4 && y1 !== y2) {
-      const loopY = Math.max(y1, y2) + GRID * 2;
-      const entryX = Math.min(x1, x2) - GRID * 1.2;
-      return { x1, y1, mx: x1 === Math.min(x1, x2) ? entryX : x1, my: loopY, x2, y2 };
-    }
     return { x1, y1, mx, my, x2, y2 };
   }
 
