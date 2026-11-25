@@ -5249,9 +5249,9 @@ endmodule`;
         </div>
       {/if}
 
-      <!-- Bottom-Right Desmos Live Oscilloscope -->
+      <!-- Bottom-Right Live Oscilloscope (slides into 2D pane when 3D view is open) -->
       {#if showScope}
-        <div class="scope-card" role="region">
+        <div class="scope-card" class:over-2d={show3DDrawer && !full3D} role="region">
           <div class="scope-header">
             <div class="scope-traces">
               {#each components.filter((c) => c.probed) as pc (pc.id)}
@@ -7309,6 +7309,11 @@ endmodule`;
     flex-direction: column;
     gap: 8px;
     z-index: 15;
+    transition: right 0.18s ease;
+  }
+
+  .scope-card.over-2d {
+    right: calc(44.5% + 16px);
   }
 
   .scope-header {
