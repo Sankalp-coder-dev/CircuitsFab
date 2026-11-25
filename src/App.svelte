@@ -1315,6 +1315,7 @@ endmodule`;
     my: number;
     x2: number;
     y2: number;
+    pathD: string;
   } | null {
     const c1 = components.find((c) => c.id === w.fromCompId);
     const c2 = components.find((c) => c.id === w.toCompId);
@@ -1345,7 +1346,20 @@ endmodule`;
       mx = x1;
       my = y2;
     }
-    return { x1, y1, mx, my, x2, y2 };
+    // Avoid routing vertically through UNO's A0 pin when wiring from below up to UNO.GND
+    if (c2.type === "ARDUINO" && w.toPinId === "GND" && y1 > y2 && Math.abs(x1 - x2) < GRID * 3) {
+      const clearX = x2 - GRID;
+      return {
+        x1,
+        y1,
+        mx: clearX,
+        my: y1,
+        x2,
+        y2,
+        pathD: `M ${x1} ${y1} L ${clearX} ${y1} L ${clearX} ${y2} L ${x2} ${y2}`,
+      };
+    }
+    return { x1, y1, mx, my, x2, y2, pathD: `M ${x1} ${y1} L ${mx} ${my} L ${x2} ${y2}` };
   }
 
   function wireColor(v: number): string {
@@ -3357,7 +3371,7 @@ endmodule`;
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
                   <!-- svelte-ignore a11y-no-static-element-interactions -->
                   <path
-                    d={`M ${pts.x1} ${pts.y1} L ${pts.mx} ${pts.my} L ${pts.x2} ${pts.y2}`}
+                    d={pts.pathD}
                     stroke="transparent"
                     stroke-width="14"
                     fill="none"
@@ -3374,7 +3388,7 @@ endmodule`;
                     on:mouseleave={clearHover}
                   />
                   <path
-                    d={`M ${pts.x1} ${pts.y1} L ${pts.mx} ${pts.my} L ${pts.x2} ${pts.y2}`}
+                    d={pts.pathD}
                     stroke={wireColor(w.voltage)}
                     stroke-width="2.6"
                     stroke-linejoin="round"
