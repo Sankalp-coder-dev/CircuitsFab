@@ -7783,4 +7783,129 @@ endmodule`;
     font-weight: 700;
     color: #56d364;
   }
+
+  /* MOBILE & TABLET RESPONSIVE LAYOUT */
+  @media (max-width: 820px) {
+    .peach-banner {
+      height: auto;
+      min-height: 48px;
+      padding: 6px 8px;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .peach-banner::-webkit-scrollbar {
+      display: none;
+    }
+
+    .workspace {
+      flex-direction: column-reverse;
+      height: calc(100vh - 50px);
+    }
+
+    .desmos-sidebar {
+      width: 100%;
+      min-width: 0;
+      height: 42vh;
+      border-right: none;
+      border-top: 1.5px solid var(--border);
+    }
+
+    .palette-grid {
+      grid-template-columns: repeat(4, 1fr);
+      max-height: 132px;
+      padding: 6px;
+      gap: 5px;
+    }
+
+    .canvas-stage {
+      flex: 1;
+      min-height: 50vh;
+      flex-direction: column;
+    }
+
+    .canvas-top-bar {
+      top: 6px;
+      left: 6px;
+      right: 6px;
+      gap: 4px;
+    }
+
+    .canvas-top-pills {
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .mini-pill,
+    .sel-btn,
+    .open-3d-tab {
+      padding: 4px 8px;
+      font-size: 13.5px;
+    }
+
+    .ai-bar {
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      padding: 4px 6px;
+    }
+
+    .ai-reply-card {
+      width: calc(100% - 16px);
+      bottom: 56px;
+      max-height: 36vh;
+      overflow-y: auto;
+    }
+
+    .zoom-controls {
+      bottom: 56px;
+      left: 8px;
+    }
+
+    .scope-card,
+    .scope-card.over-2d {
+      width: min(230px, calc(100% - 110px));
+      bottom: 56px;
+      right: 8px;
+      padding: 6px;
+    }
+
+    .subpage-grid {
+      grid-template-columns: 1fr;
+      height: auto;
+      min-height: calc(100vh - 50px);
+      padding: 10px;
+      gap: 12px;
+    }
+
+    .physics-mode-row {
+      grid-template-columns: 1fr;
+    }
+
+    .glossary-page {
+      padding: 10px;
+      height: auto;
+      min-height: calc(100vh - 50px);
+    }
+
+    .glossary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .about-page {
+      padding: 12px;
+      height: auto;
+      min-height: calc(100vh - 50px);
+    }
+
+    .about-card {
+      padding: 16px;
+    }
+
+    .about-actions {
+      flex-wrap: wrap;
+    }
+  }
 </style>
