@@ -808,7 +808,7 @@ export function formatSI(val: number, unit: string): string {
 
 export function formatElec(val: number, unit: 'V' | 'A' | 'W'): string {
   const abs = Math.abs(val);
-  if (abs < 1e-7) return `0.0${unit}`;
+  if (abs < 5e-5) return `0.0${unit}`;
   if (abs >= 1) return `${val.toFixed(2)}${unit}`;
   if (abs >= 1e-3) return `${(val * 1e3).toFixed(1)}m${unit}`;
   return `${(val * 1e6).toFixed(0)}μ${unit}`;

@@ -894,6 +894,11 @@ endmodule`;
   function runIdeCompiler() {
     if (ideTarget === "avr") {
       const prog = compileArduinoCode(avrSourceCode);
+      if (prog.error) {
+        compilerLog = `[AVR-GCC ERROR] ${prog.error}`;
+        showToast("Compile failed — check syntax");
+        return;
+      }
       compiledArduino = prog;
       if (!components.some((c) => c.type === "ARDUINO")) {
         loadPresetById("arduino-npn");

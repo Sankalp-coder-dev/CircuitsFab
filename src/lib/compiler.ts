@@ -117,7 +117,48 @@ export interface VerilogSynthesisResult {
   log: string;
 }
 
+export function validateSourceSyntax(source: string, kind: 'avr' | 'verilog'): string | null {
+  const stripped = source.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  // Check unterminated double-quoted string literals
+  const quotes = stripped.match(/(?<!\\)"/g);
+  if (quotes && quotes.length % 2 !== 0) {
+    return 'Unterminated string literal (missing closing ")';
+  }
+  let parens = 0;
+  let braces = 0;
+  for (const ch of stripped) {
+    if (ch === '(') parens++;
+    else if (ch === ')') parens--;
+    else if (ch === '{') braces++;
+    else if (ch === '}') braces--;
+    if (parens < 0) return 'Unexpected closing parenthesis ")"';
+    if (braces < 0) return 'Unexpected closing brace "}"';
+  }
+  if (parens !== 0) return 'Unclosed parenthesis "("';
+  if (braces !== 0) return 'Unclosed brace "{"';
+  if (kind === 'avr' && !/\bloop\s*\(/.test(stripped)) {
+    return 'Missing required void loop() function';
+  }
+  if (kind === 'verilog' && (!/\bmodule\b/.test(stripped) || !/\bendmodule\b/.test(stripped))) {
+    return 'Missing module ... endmodule block';
+  }
+  return null;
+}
+
 export function synthesizeVerilogToLut4(source: string): VerilogSynthesisResult {
+  const synErr = validateSourceSyntax(source, 'verilog');
+  if (synErr) {
+    return {
+      ok: false,
+      lutY0: 0,
+      lutY1: 0,
+      exprY0: '0',
+      exprY1: '0',
+      bitstreamHex: '0x0000_0000',
+      gateCount: 0,
+      log: `[VERILOG ERROR] ${synErr}`,
+    };
+  }
   const y0Match = source.match(/assign\s+Y0\s*=\s*([^;]+);/i);
   const y1Match = source.match(/assign\s+Y1\s*=\s*([^;]+);/i);
 
@@ -155,7 +196,24 @@ export function synthesizeVerilogToLut4(source: string): VerilogSynthesisResult 
   };
 }
 
-export function compileArduinoCode(source: string): CompiledArduinoProgram {
+export function compileArduinoCode(source: string): CompiledArduinoProgram & { error?: string } {
+  const synErr = validateSourceSyntax(source, 'avr');
+  if (synErr) {
+    return {
+      name: 'error',
+      freqHz: 2.5,
+      dutyCycle: 50,
+      d13Expr: 'LOW',
+      d11Expr: 'LOW',
+      d9ThresholdV: 2.2,
+      instructionsCount: 0,
+      hexPreview: 'ERROR',
+      serialLines: [`[AVR-GCC ERROR] ${synErr}`],
+      busMode: 'NONE',
+      pinModes: {},
+      error: synErr,
+    };
+  }
   // Parse delay(ms) to compute frequency Hz
   const delayMatches = [...source.matchAll(/delay\s*\(\s*(\d+)\s*\)/g)];
   let totalDelayMs = 400;
