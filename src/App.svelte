@@ -6334,12 +6334,6 @@ endmodule`;
           </div>
           <p class="glossary-desc">{item.tooltipPhysics}</p>
           <p class="glossary-desc">{gInfo?.plain ?? item.tooltipPhysics}</p>
-          {#if gInfo?.analogy}
-            <p class="glossary-analogy">
-              <strong>Analogy:</strong>
-              {gInfo.analogy}
-            </p>
-          {/if}
           {#if gInfo?.formulaHtml}
             <div class="math-pill">{@html gInfo.formulaHtml}</div>
           {/if}
