@@ -42,33 +42,45 @@ Keep your answer clear, educational, accurate, and concise (under 180 words). Do
 LIVE WORKSPACE STATE:
 ${workspaceContext || 'Empty workspace'}`;
 
-    // Prefer Groq free Llama 3.1 API if GROQ_API_KEY is configured
+    // Prefer Groq free Llama 3 API if GROQ_API_KEY / GROQ_API_VARIABLE is configured
     if (groqKey) {
-      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${groqKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` },
-          ],
-          temperature: 0.4,
-          max_tokens: 400,
-        }),
-      });
-      if (groqRes.ok) {
-        const gData = await groqRes.json();
-        const replyText = gData?.choices?.[0]?.message?.content?.trim();
-        if (replyText) {
-          return new Response(JSON.stringify({ reply: replyText, provider: 'groq-llama-3.1' }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
+      const groqModels = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'];
+      let groqDetail = '';
+      for (const gm of groqModels) {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${groqKey.trim()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: gm,
+            messages: [
+              { role: 'system', content: systemInstruction },
+              { role: 'user', content: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` },
+            ],
+            temperature: 0.4,
+            max_tokens: 400,
+          }),
+        });
+        if (groqRes.ok) {
+          const gData = await groqRes.json();
+          const replyText = gData?.choices?.[0]?.message?.content?.trim();
+          if (replyText) {
+            return new Response(JSON.stringify({ reply: replyText, provider: `groq-${gm}` }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          groqDetail = `${gm}: ${groqRes.status} ${await groqRes.text()}`;
         }
+      }
+      if (!hfToken && !geminiKey) {
+        return new Response(
+          JSON.stringify({ error: 'Groq API error', detail: groqDetail }),
+          { status: 502, headers: { 'Content-Type': 'application/json' } }
+        );
       }
     }
 
