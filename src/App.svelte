@@ -172,10 +172,7 @@
   let undoStack: { components: CircuitComponent[]; wires: Wire[] }[] = [];
   let redoStack: { components: CircuitComponent[]; wires: Wire[] }[] = [];
 
-  // AI Circuit Assistant & Share/Export Toast
-  let aiPrompt = "";
-  let aiMode: AiMode = "explain";
-  let aiReply: AiTutorResponse | null = null;
+  // Share/Export Toast
   let stress3dEl: HTMLCanvasElement;
   let statusToast = "";
   let showExportMenu = false;
@@ -260,22 +257,6 @@
     };
     reader.readAsText(file);
     input.value = "";
-  }
-
-  let aiLoading = false;
-
-  async function runAiPrompt() {
-    if (aiLoading) return;
-    aiLoading = true;
-    aiReply = {
-      mode: aiMode,
-      title: "CircuitFab AI",
-      body: "Analyzing your live circuit...",
-    };
-    const res = await askAiTutorAsync(aiMode, aiPrompt, components, wires);
-    aiReply = res;
-    aiLoading = false;
-    if (aiMode !== "explain") aiPrompt = "";
   }
 
   function copyShareUrl() {
@@ -5143,48 +5124,6 @@ endmodule`;
               {/each}
             </g>
           </svg>
-
-          <!-- Bottom-Center Educational AI Tutor (Explain / Brainstorm / Parts) -->
-          {#if aiReply}
-            <div class="ai-reply-card">
-              <div class="ai-reply-top">
-                <strong>{aiReply.title}</strong>
-                <button class="icon-action" on:click={() => (aiReply = null)}
-                  >✕</button
-                >
-              </div>
-              <p class="ai-reply-body">{aiReply.body}</p>
-            </div>
-          {/if}
-          <form class="ai-bar" on:submit|preventDefault={runAiPrompt}>
-            <div class="ai-modes">
-              <button
-                type="button"
-                class:active={aiMode === "explain"}
-                on:click={() => (aiMode = "explain")}>EXPLAIN</button
-              >
-              <button
-                type="button"
-                class:active={aiMode === "brainstorm"}
-                on:click={() => (aiMode = "brainstorm")}>IDEAS</button
-              >
-              <button
-                type="button"
-                class:active={aiMode === "parts"}
-                on:click={() => (aiMode = "parts")}>PARTS</button
-              >
-            </div>
-            <input
-              type="text"
-              bind:value={aiPrompt}
-              placeholder={aiMode === "explain"
-                ? "Ask how your circuit works..."
-                : aiMode === "brainstorm"
-                  ? "Brainstorm a project idea..."
-                  : "Ask what a part does (e.g. FPGA, NPN)..."}
-            />
-            <button type="submit" class="ai-ask-btn">ASK</button>
-          </form>
 
           <!-- Bottom-Left 2D Zoom Controls -->
           <div class="zoom-controls">

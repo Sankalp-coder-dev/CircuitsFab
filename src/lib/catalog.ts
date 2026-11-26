@@ -167,7 +167,7 @@ export const CATALOG: CatalogItem[] = [
   {
     type: 'R',
     label: 'R',
-    shortUnit: 'Ω',
+    shortUnit: 'Ω', 
     category: 'analog',
     defaultValue: 1000,
     minVal: 10,
