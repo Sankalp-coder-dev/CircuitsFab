@@ -3306,12 +3306,12 @@ endmodule`;
                   setHover(
                     e,
                     "OPEN 3D PCB VIEW",
-                    "Expand interactive 3D circuit board drawer",
+                    "View your circuit as an interactive 3D FR-4 PCB and download it as .stl",
                   )}
                 on:mousemove={moveHover}
                 on:mouseleave={clearHover}
               >
-                ◀ 3D VIEW
+                ◀ 3D PCB
               </button>
             {/if}
           </div>
@@ -5250,6 +5250,15 @@ endmodule`;
             >
             <button on:click|stopPropagation={() => (full3D = !full3D)}>
               {full3D ? "SPLIT" : "FULL"}
+            </button>
+            <button
+              on:click|stopPropagation={() => {
+                downloadTextFile("circuitfab_pcb.stl", exportPcbStl(components, GRID));
+                showToast("Downloaded 3D PCB (.stl)");
+              }}
+              title="Download 3D PCB as .stl"
+            >
+              ⬇ STL
             </button>
             <button
               class="close-3d-btn"
