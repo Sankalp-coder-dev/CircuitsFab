@@ -43,7 +43,12 @@ ${workspaceContext || 'Empty workspace'}`;
 
     // Prefer Hugging Face open-source models if HF_TOKEN is configured
     if (hfToken) {
-      const hfModels = ['meta-llama/Llama-3.1-8B-Instruct', 'Qwen/Qwen2.5-7B-Instruct'];
+      const hfModels = [
+        'meta-llama/Llama-3.1-8B-Instruct:fastest',
+        'Qwen/Qwen2.5-7B-Instruct:fastest',
+        'HuggingFaceTB/SmolLM3-3B',
+        'meta-llama/Llama-3.1-8B-Instruct',
+      ];
       let hfDetail = '';
       for (const hfModel of hfModels) {
         const hfRes = await fetch('https://router.huggingface.co/v1/chat/completions', {
