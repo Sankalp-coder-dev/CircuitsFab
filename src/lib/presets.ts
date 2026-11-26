@@ -669,8 +669,8 @@ export const TUTORIALS: GuidedTutorial[] = [
     ],
     steps: [
       {
-        badge: 'STEP 1/3: WIRE UNO(5V) → R1',
-        instruction: 'Click (or drag) from the 5V pin of UNO to the left pin of resistor R1.',
+        badge: 'STEP 1/3: CONNECT 5V POWER TO R1',
+        instruction: 'Drag from the 5V pin on UNO to the left pin of resistor R1 (this limits current so the LED stays safe!).',
         targetCompId: 'U1',
         targetPinId: 'VCC',
         toCompId: 'R1',
@@ -687,8 +687,8 @@ export const TUTORIALS: GuidedTutorial[] = [
         }),
       },
       {
-        badge: 'STEP 2/3: WIRE R1 → LED1(+)',
-        instruction: 'Connect the right pin of R1 to the + (Anode) pin on the left of LED1 to light it up!',
+        badge: 'STEP 2/3: WIRE R1 → LED1 (+)',
+        instruction: 'Drag from the right pin of R1 to the + (Anode) pin on LED1 to complete the loop and light it up!',
         targetCompId: 'R1',
         targetPinId: 'B',
         toCompId: 'LED1',
@@ -703,8 +703,8 @@ export const TUTORIALS: GuidedTutorial[] = [
         }),
       },
       {
-        badge: 'STEP 3/3: LOWER R1 TO 220Ω',
-        instruction: 'Drag the R1 slider in the left sidebar down to 220Ω to make the LED shine brighter safely.',
+        badge: 'STEP 3/3: TUNE BRIGHTNESS (220Ω)',
+        instruction: 'Slide R1 down to 220Ω in the left panel—watch the current rise to ~14.5mA and the LED glow brighter!',
         targetCompId: 'R1',
         check: (comps) => {
           const r1 = comps.find((c) => c.id === 'R1');
