@@ -10,12 +10,13 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
+  const groqKey = process.env.GROQ_API_KEY;
   const hfToken = process.env.HF_TOKEN;
   const geminiKey = process.env.GEMINI_API_KEY;
 
-  if (!hfToken && !geminiKey) {
+  if (!groqKey && !hfToken && !geminiKey) {
     return new Response(
-      JSON.stringify({ error: 'No LLM API key configured (set HF_TOKEN for Hugging Face Llama 3 or GEMINI_API_KEY)' }),
+      JSON.stringify({ error: 'No LLM API key configured (set GROQ_API_KEY, HF_TOKEN, or GEMINI_API_KEY)' }),
       { status: 501, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -40,6 +41,36 @@ Keep your answer clear, educational, accurate, and concise (under 180 words). Do
 
 LIVE WORKSPACE STATE:
 ${workspaceContext || 'Empty workspace'}`;
+
+    // Prefer Groq free Llama 3.1 API if GROQ_API_KEY is configured
+    if (groqKey) {
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` },
+          ],
+          temperature: 0.4,
+          max_tokens: 400,
+        }),
+      });
+      if (groqRes.ok) {
+        const gData = await groqRes.json();
+        const replyText = gData?.choices?.[0]?.message?.content?.trim();
+        if (replyText) {
+          return new Response(JSON.stringify({ reply: replyText, provider: 'groq-llama-3.1' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
 
     // Prefer Hugging Face open-source models if HF_TOKEN is configured
     if (hfToken) {
