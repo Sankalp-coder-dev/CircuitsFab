@@ -72,39 +72,53 @@ ${workspaceContext || 'Empty workspace'}`;
       }
     }
 
-    // Fallback to Gemini 2.5 Flash if GEMINI_API_KEY is configured
+    // Fallback to Gemini API if GEMINI_API_KEY is configured
     if (geminiKey) {
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemInstruction }] },
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.4,
-              maxOutputTokens: 400,
-            },
-          }),
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+      let lastDetail = '';
+      for (const model of models) {
+        const genConfig: Record<string, unknown> = {
+          temperature: 0.4,
+          maxOutputTokens: 500,
+        };
+        if (model === 'gemini-2.5-flash') {
+          genConfig.thinkingConfig = { thinkingBudget: 0 };
         }
-      );
-
-      if (geminiRes.ok) {
-        const data = await geminiRes.json();
-        const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (replyText) {
-          return new Response(JSON.stringify({ reply: replyText, provider: 'gemini' }), {
-            status: 200,
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-          });
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemInstruction }] },
+              contents: [
+                {
+                  role: 'user',
+                  parts: [{ text: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` }],
+                },
+              ],
+              generationConfig: genConfig,
+            }),
+          }
+        );
+
+        if (geminiRes.ok) {
+          const data = await geminiRes.json();
+          const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (replyText) {
+            return new Response(JSON.stringify({ reply: replyText, provider: model }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          lastDetail = `${model}: ${geminiRes.status} ${await geminiRes.text()}`;
         }
       }
+      return new Response(
+        JSON.stringify({ error: 'Upstream LLM provider returned an error', detail: lastDetail }),
+        { status: 502, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(
