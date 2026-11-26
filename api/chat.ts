@@ -41,34 +41,46 @@ Keep your answer clear, educational, accurate, and concise (under 180 words). Do
 LIVE WORKSPACE STATE:
 ${workspaceContext || 'Empty workspace'}`;
 
-    // Prefer Hugging Face Llama 3 if HF_TOKEN is configured
+    // Prefer Hugging Face open-source models if HF_TOKEN is configured
     if (hfToken) {
-      const hfRes = await fetch('https://router.huggingface.co/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${hfToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/Llama-3.1-8B-Instruct',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` },
-          ],
-          temperature: 0.4,
-          max_tokens: 400,
-        }),
-      });
+      const hfModels = ['meta-llama/Llama-3.1-8B-Instruct', 'Qwen/Qwen2.5-7B-Instruct'];
+      let hfDetail = '';
+      for (const hfModel of hfModels) {
+        const hfRes = await fetch('https://router.huggingface.co/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${hfToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: hfModel,
+            messages: [
+              { role: 'system', content: systemInstruction },
+              { role: 'user', content: prompt?.trim() || `Analyze my current circuit in ${mode} mode.` },
+            ],
+            temperature: 0.4,
+            max_tokens: 400,
+          }),
+        });
 
-      if (hfRes.ok) {
-        const hfData = await hfRes.json();
-        const replyText = hfData?.choices?.[0]?.message?.content?.trim();
-        if (replyText) {
-          return new Response(JSON.stringify({ reply: replyText, provider: 'llama3' }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
+        if (hfRes.ok) {
+          const hfData = await hfRes.json();
+          const replyText = hfData?.choices?.[0]?.message?.content?.trim();
+          if (replyText) {
+            return new Response(JSON.stringify({ reply: replyText, provider: hfModel }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          hfDetail = `${hfModel}: ${hfRes.status} ${await hfRes.text()}`;
         }
+      }
+      if (!geminiKey) {
+        return new Response(
+          JSON.stringify({ error: 'Hugging Face inference error', detail: hfDetail }),
+          { status: 502, headers: { 'Content-Type': 'application/json' } }
+        );
       }
     }
 
