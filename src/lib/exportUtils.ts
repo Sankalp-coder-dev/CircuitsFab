@@ -289,7 +289,14 @@ export function exportPcbStl(components: CircuitComponent[], gridSize = 28): str
     addTri(p[3], p[0], p[4]); addTri(p[3], p[4], p[7]);
   };
 
-  addBox(350, 260, 0, 320, 220, 4);
+  let minX = 120, maxX = 620, minY = 80, maxY = 460;
+  if (components.length > 0) {
+    minX = Math.min(...components.map((c) => c.x * gridSize)) - 110;
+    maxX = Math.max(...components.map((c) => c.x * gridSize)) + 110;
+    minY = Math.min(...components.map((c) => c.y * gridSize)) - 90;
+    maxY = Math.max(...components.map((c) => c.y * gridSize)) + 90;
+  }
+  addBox((minX + maxX) / 2, (minY + maxY) / 2, 0, (maxX - minX) / 2, (maxY - minY) / 2, 4);
   for (const c of components) {
     const cx = c.x * gridSize;
     const cy = c.y * gridSize;

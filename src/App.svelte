@@ -3357,10 +3357,10 @@ endmodule`;
 
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
               <rect
-                x="-2800"
-                y="-2800"
-                width="7000"
-                height="7000"
+                x={(-pan.x - 4000) / zoom}
+                y={(-pan.y - 4000) / zoom}
+                width={12000 / zoom}
+                height={12000 / zoom}
                 fill="url(#desmos-grid-major)"
               />
 
@@ -6429,8 +6429,33 @@ endmodule`;
         inspect the board or test what breaks in the Stress Lab.
       </p>
       <p>
-        <strong>How FPGA development works here:</strong> An FPGA (Field-Programmable Gate Array) lets you build real digital hardware instead of running software line by line. In CircuitFab, the FPGA block is a 4-input Look-Up Table (<strong>LUT4</strong>) with inputs <code>I0–I3</code> and outputs <code>Y0, Y1</code>. You can edit its 16-row truth table in <strong>FPGA &amp; CHIP</strong> or write Verilog HDL in <strong>CODE IDE</strong> and watch it drive 7-segment displays and flip-flops live.
+        <strong>How to get started in 30 seconds:</strong>
+        1) Click any part on the left (or pick a preset like <strong>UNO + NPN</strong> at the top).
+        2) Drag from one white pin circle to another to draw a wire.
+        3) Slide values on the left and watch live voltages, currents, and the <strong>3D PCB</strong> update—or switch to <strong>REALISTIC</strong> mode to test real-world burnout limits.
       </p>
+      <div class="formula-grid">
+        <div class="formula-box">
+          <div class="formula-title">Ohm's Law</div>
+          <div class="formula-math">V = I &middot; R</div>
+          <div class="formula-note">Voltage (V) = Current (A) &times; Resistance (&Omega;)</div>
+        </div>
+        <div class="formula-box">
+          <div class="formula-title">Electrical Power &amp; Heat</div>
+          <div class="formula-math">P = V &middot; I = I<sup>2</sup> &middot; R</div>
+          <div class="formula-note">1/4W resistors blow above 250 mW</div>
+        </div>
+        <div class="formula-box">
+          <div class="formula-title">LED Resistor Sizing</div>
+          <div class="formula-math">R = (V<sub>S</sub> &minus; V<sub>f</sub>) / I<sub>LED</sub></div>
+          <div class="formula-note">(5 V &minus; 1.8 V) / 220 &Omega; = 14.5 mA (safe)</div>
+        </div>
+        <div class="formula-box">
+          <div class="formula-title">Shockley Diode / LED</div>
+          <div class="formula-math">I = I<sub>S</sub> &middot; (e<sup>V / nV<sub>T</sub></sup> &minus; 1)</div>
+          <div class="formula-note">Exponential turn-on above V<sub>f</sub></div>
+        </div>
+      </div>
       <p>
         <strong>Primary use:</strong> learning electronics by experimenting—without
         needing to buy parts, install heavy desktop software, or worry about burning
@@ -7794,6 +7819,43 @@ endmodule`;
     display: flex;
     gap: 10px;
     margin-top: 6px;
+  }
+
+  .formula-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 4px 0;
+  }
+
+  .formula-box {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3.5px solid var(--blue);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .formula-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+  }
+
+  .formula-math {
+    font-family: "Cambria Math", "Times New Roman", Georgia, serif;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .formula-note {
+    font-size: 14px;
+    color: var(--ink-muted);
   }
 
   /* HOVER TOOLTIP HUD */
