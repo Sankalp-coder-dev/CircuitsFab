@@ -10,7 +10,7 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_VARIABLE;
   const hfToken = process.env.HF_TOKEN;
   const geminiKey = process.env.GEMINI_API_KEY;
 
