@@ -908,7 +908,7 @@ endmodule`;
           ? { ...c, value: prog.freqHz, param2: prog.dutyCycle }
           : c,
       );
-      compilerLog = `[AVR-GCC] Compiled ${prog.instructionsCount} bytes -> Flashed UNO (${prog.freqHz}Hz, Duty=${prog.dutyCycle}%, A0>${prog.d9ThresholdV}V) | HEX ${prog.hexPreview}`;
+      compilerLog = `[UNO-EMU] Parsed ${prog.instructionsCount} ops -> Flashed UNO (${prog.freqHz}Hz, Duty=${prog.dutyCycle}%, A0>${prog.d9ThresholdV}V)`;
     } else {
       const res = synthesizeVerilogToLut4(verilogSourceCode);
       verilogSynthInfo = res;
@@ -1975,6 +1975,7 @@ endmodule`;
 
     <button
       class="ctrl-btn"
+      aria-label="Undo"
       disabled={undoStack.length === 0}
       on:click={undo}
       on:mouseenter={(e) =>
@@ -1987,6 +1988,7 @@ endmodule`;
 
     <button
       class="ctrl-btn"
+      aria-label="Redo"
       disabled={redoStack.length === 0}
       on:click={redo}
       on:mouseenter={(e) =>
@@ -2099,6 +2101,7 @@ endmodule`;
 
     <button
       class="ctrl-btn"
+      aria-label={running ? "Pause simulation" : "Run simulation"}
       class:active={running}
       on:click={() => (running = !running)}
       on:mouseenter={(e) =>
@@ -2115,6 +2118,7 @@ endmodule`;
 
     <button
       class="ctrl-btn danger"
+      aria-label="Clear board"
       on:click={clearBoard}
       on:mouseenter={(e) =>
         setHover(e, "CLEAR", "Clear all components and wires")}

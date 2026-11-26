@@ -240,3 +240,32 @@ test('SR Latch memory: Set latches Q=5V, Hold retains Q=5V, Reset clears Q=0V', 
   runSteps(comps, wires, stress, 5);
   assert.ok((comps[2].pinVoltages.Q ?? 0) < 0.5, 'Expected Q=0V after Reset');
 });
+
+test('Compiler & Verilog LUT4 synthesizer: validates syntax and synthesizes Full Adder', async () => {
+  const { compileArduinoCode, synthesizeVerilogToLut4 } = await import('../src/lib/compiler.ts');
+  const badC = compileArduinoCode('void loop() { Serial.println("unterminated); }');
+  assert.ok(badC.error, 'Expected syntax error for unterminated string');
+
+  const goodC = compileArduinoCode('void loop() { delay(100); analogWrite(11, 128); }');
+  assert.equal(goodC.error, undefined);
+  assert.ok(goodC.freqHz > 0);
+
+  const badV = synthesizeVerilogToLut4('assign Y0 = I0 & I1;');
+  assert.equal(badV.ok, false, 'Expected Verilog error when module/endmodule is missing');
+
+  const goodV = synthesizeVerilogToLut4('module t(input I0, I1, output Y0, Y1); assign Y0 = I0 ^ I1; assign Y1 = I0 & I1; endmodule');
+  assert.equal(goodV.ok, true);
+});
+
+test('Save/Load JSON round-trip preserves components and wires', async () => {
+  const { exportCircuitJson, importCircuitJson } = await import('../src/lib/exportUtils.ts');
+  const json = exportCircuitJson({
+    components: PRESETS[0].components,
+    wires: PRESETS[0].wires,
+    customChips: INITIAL_CUSTOM_CHIPS,
+  });
+  const loaded = importCircuitJson(json);
+  assert.ok(loaded !== null);
+  assert.equal(loaded.components.length, PRESETS[0].components.length);
+  assert.equal(loaded.wires.length, PRESETS[0].wires.length);
+});
